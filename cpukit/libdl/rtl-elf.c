@@ -157,13 +157,13 @@ rtems_rtl_elf_find_symbol (rtems_rtl_obj*      obj,
   rtems_rtl_obj_sect* sect;
 
   /*
-   * If the symbol type is STT_NOTYPE the symbol references a global
+   * If the symbol bind is STB_GLOBAL the symbol references a global
    * symbol. The gobal symbol table is searched to find it and that value
    * returned. If the symbol is local to the object module the section for the
    * symbol is located and it's base added to the symbol's value giving an
    * absolute location.
    */
-  if (ELF_ST_TYPE(sym->st_info) == STT_NOTYPE || sym->st_shndx == SHN_COMMON)
+  if (ELF_ST_BIND(sym->st_info) == STB_GLOBAL || sym->st_shndx == SHN_COMMON)
   {
     /*
      * Search the object file then the global table for the symbol.
