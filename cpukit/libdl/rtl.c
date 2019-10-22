@@ -35,22 +35,22 @@
 /**
  * Symbol table cache size. They can be big so the cache needs space to work.
  */
-#define RTEMS_RTL_ELF_SYMBOL_CACHE (2048)
+#define RTEMS_RTL_ELF_SYMBOL_CACHE (4096)
 
 /**
  * String table cache size.
  */
-#define RTEMS_RTL_ELF_STRING_CACHE (2048)
+#define RTEMS_RTL_ELF_STRING_CACHE (4096)
 
 /**
  * Relocations table cache size.
  */
-#define RTEMS_RTL_ELF_RELOC_CACHE (2048)
+#define RTEMS_RTL_ELF_RELOC_CACHE (4096)
 
 /**
  * Decompression output buffer.
  */
-#define RTEMS_RTL_COMP_OUTPUT (2048)
+#define RTEMS_RTL_COMP_OUTPUT (4096)
 
 /**
  * Static RTL data is returned to the user when the linker is locked.
