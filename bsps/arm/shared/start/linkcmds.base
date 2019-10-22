@@ -145,6 +145,20 @@ SECTIONS {
 		KEEP (*(.fini_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .dtors))
 		PROVIDE_HIDDEN (__fini_array_end = .);
 	} > REGION_RODATA AT > REGION_RODATA_LOAD
+	__board_initcalls_start = .;
+	.board_initcalls : {
+		KEEP(*(.initcall.0))
+		KEEP(*(.initcall.1))
+		KEEP(*(.initcall.2))
+		KEEP(*(.initcall.3))
+		KEEP(*(.initcall.4))
+		KEEP(*(.initcall.5))
+		KEEP(*(.initcall.6))
+		KEEP(*(.initcall.7))
+		KEEP(*(.initcall.8))
+		KEEP(*(.initcall.9))
+	} > REGION_RODATA AT > REGION_RODATA_LOAD
+	__board_initcalls_end = .;
 	.data.rel.ro : ALIGN_WITH_INPUT {
 		*(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*)
 		*(.data.rel.ro* .gnu.linkonce.d.rel.ro.*)
