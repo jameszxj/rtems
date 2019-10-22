@@ -41,6 +41,9 @@
 #include <rtems/score/watchdogimpl.h>
 #include <rtems/score/wkspace.h>
 
+#include <rtems/rtems/tasksimpl.h>
+#include <rtems/scheduler.h>
+
 #include "cpuuseimpl.h"
 
 /*
@@ -198,6 +201,11 @@ task_usage(Thread_Control* thread, void* arg)
   {
     data->idle = usage;
     data->current_idle = current;
+  }
+  if (thread->Object.id == 0x09010002)
+  {
+    data->idle += usage;
+    data->current_idle += current;
   }
 
   /*
@@ -424,6 +432,8 @@ rtems_cpuusage_top_thread (rtems_task_argument arg)
       Thread_Control*   thread = data->tasks[i];
       Timestamp_Control usage;
       Timestamp_Control current_usage;
+      const Scheduler_Control *scheduler;
+	  rtems_task_priority rpri, cpri;
 
       if (thread == NULL)
         break;
@@ -444,12 +454,20 @@ rtems_cpuusage_top_thread (rtems_task_argument arg)
       if (name[0] == '\0')
         snprintf(name, sizeof(name) - 1, "(%p)", thread->Start.Entry.Kinds.Numeric.entry);
 
+      scheduler = _Thread_Scheduler_get_home( thread );
+
+      rpri = (_RTEMS_Priority_From_core(scheduler, thread->Real_priority.priority) > PRIORITY_DEFAULT_MAXIMUM)?
+	  					PRIORITY_DEFAULT_MAXIMUM:_RTEMS_Priority_From_core(scheduler, thread->Real_priority.priority);
+
+	  cpri = (_RTEMS_Priority_From_core(scheduler, _Thread_Get_priority(thread)) > PRIORITY_DEFAULT_MAXIMUM)?
+	  					PRIORITY_DEFAULT_MAXIMUM:_RTEMS_Priority_From_core(scheduler, _Thread_Get_priority(thread));
+
       rtems_printf(data->printer,
-                   " 0x%08" PRIx32 " | %-19s |  %3" PRId64 " |  %3" PRId64 "   | ",
+                   " 0x%08" PRIx32 " | %-19s |  %3" PRId32 " |  %3" PRId32 "   | ",
                    thread->Object.id,
-                   name,
-                   _Thread_Get_unmapped_real_priority(thread),
-                   _Thread_Get_unmapped_priority(thread));
+                   name, 
+                   rpri, 
+                   cpri);
 
       usage = data->usage[i];
       current_usage = data->current_usage[i];
