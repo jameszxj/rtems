@@ -87,17 +87,6 @@ ZYNQ_RAM_INT_1_LENGTH="64k - 512"
 AS_IF([test "x${RTEMS_BSP}" == xxilinx_zynq_zc706],
       [ZYNQ_RAM_ORIGIN="0x00400000"])
 
-AS_IF([test "x${RTEMS_BSP}" == xxilinx_zynq_nsaboard],
-      [ZYNQ_RAM_ORIGIN="0x00100000"
-       ZYNQ_RAM_MMU="${ZYNQ_RAM_ORIGIN}"
-       ZYNQ_RAM_MMU_LENGTH="16k"
-       ZYNQ_RAM_ORIGIN_AVAILABLE="${ZYNQ_RAM_ORIGIN} + 0x00004000"
-       ZYNQ_RAM_LENGTH_AVAILABLE="${BSP_ZYNQ_RAM_LENGTH} - 1M - 16k"
-       ZYNQ_RAM_INT_0_ORIGIN="0x00000000"
-       ZYNQ_RAM_INT_0_LENGTH="64k + 64k + 64k"
-       ZYNQ_RAM_INT_1_ORIGIN="0xFFFF0000"
-       ZYNQ_RAM_INT_1_LENGTH="64k - 512"])
-
 AC_DEFUN([ZYNQ_LINKCMD],[
 AC_ARG_VAR([$1],[$2; default $3])dnl
 [$1]=[$]{[$1]:-[$3]}
