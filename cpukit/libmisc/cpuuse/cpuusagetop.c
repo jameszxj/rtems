@@ -197,15 +197,10 @@ task_usage(Thread_Control* thread, void* arg)
   _Timestamp_Add_to(&data->total, &usage);
   _Timestamp_Add_to(&data->current, &current);
 
-  if (thread->Object.id == 0x09010001)
+  if (thread->is_idle)
   {
-    data->idle = usage;
-    data->current_idle = current;
-  }
-  if (thread->Object.id == 0x09010002)
-  {
-    data->idle += usage;
-    data->current_idle += current;
+	  data->idle += usage;
+	  data->current_idle += current;
   }
 
   /*
@@ -321,6 +316,8 @@ rtems_cpuusage_top_thread (rtems_task_argument arg)
 
     _Timestamp_Set_to_zero(&data->total);
     _Timestamp_Set_to_zero(&data->current);
+	_Timestamp_Set_to_zero(&data->current_idle);
+	_Timestamp_Set_to_zero(&data->idle);
     data->stack_size = 0;
 
     _TOD_Get_uptime(&data->uptime);
