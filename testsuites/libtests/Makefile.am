@@ -12,8 +12,7 @@ lib_screens =
 lib_docs =
 
 support_includes = -I$(top_srcdir)/../support/include
-test_includes = -I$(top_srcdir)/support \
-	-I$(top_srcdir)/../psxtests/include
+test_includes = -I$(top_srcdir)/support
 
 if TEST_block01
 lib_tests += block01
@@ -92,7 +91,7 @@ block08_SOURCES = block08/init.c block08/system.h \
 	block08/bdbuf_test4_1.c block08/bdbuf_test4_2.c \
 	block08/bdbuf_test4_3.c
 block08_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_block08) \
-	$(support_includes) -I$(top_srcdir)/block08
+	$(support_includes)
 endif
 
 if TEST_block09
@@ -219,7 +218,7 @@ lib_screens += complex/complex.scn
 complex_SOURCES = complex/init.c complex/docomplex.c \
 	complex/docomplexf.c complex/docomplexl.c
 complex_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_complex) \
-	$(support_includes) -DNO_LONG_DOUBLE
+	$(support_includes)
 complex_LDADD = -lm $(LDADD)
 endif
 
@@ -314,11 +313,9 @@ if TEST_devnullfatal01
 lib_tests += devnullfatal01
 lib_screens += devnullfatal01/devnullfatal01.scn
 lib_docs += devnullfatal01/devnullfatal01.doc
-devnullfatal01_SOURCES = ../sptests/spfatal_support/init.c \
-	../sptests/spfatal_support/system.h devnullfatal01/testcase.h
+devnullfatal01_SOURCES = devnullfatal01/init.c
 devnullfatal01_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_devnullfatal01) \
-	$(support_includes) -I$(top_srcdir)/../../sptests/spfatal_support \
-	-I$(top_srcdir)/devnullfatal01
+	$(support_includes)
 endif
 
 if DLTESTS
@@ -483,7 +480,7 @@ dl06-pre-tar.o: dl06-pre-tar.c dl06-pre-tar.h
 	$(AM_V_CC)$(COMPILE) -c -o $@ $<
 dl06-pre-init.o: dl06-pre-tar.o
 	$(AM_V_CC)$(COMPILE)  $(dl06_CPPFLAGS) $(CPU_CFLAGS) $(AM_CFLAGS) \
-		-DDL06_PRE -c -o $@ $(srcdir)/dl06/init.c
+	  -c -o $@ $(srcdir)/dl06/pre-init.c
 dl06.pre: dl06-pre-init.o dl06/dl06-dl-load.o dl06-pre-tar.o
 	@rm -f $@ dl06-sym.o
 	$(AM_V_CCLD)$(LINK.c) $(CPU_CFLAGS) $(AM_CFLAGS) $(AM_LDFLAGS) -o $@ $+ $(LDADD)
@@ -985,8 +982,7 @@ lib_tests += mathl
 lib_screens += mathl/mathl.scn
 mathl_SOURCES = mathl/init.c mathl/domathl.c
 mathl_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_mathl) \
-	$(support_includes) -I$(top_srcdir)/math \
-	-DNO_LONG_DOUBLE
+	$(support_includes) -I$(top_srcdir)/math
 mathl_LDADD = -lm $(LDADD)
 endif
 
@@ -1044,7 +1040,7 @@ lib_docs += mouse01/mouse01.doc
 mouse01_SOURCES = mouse01/init.c mouse01/serial_mouse_config.c \
 	mouse01/msmouse.c termios04/termios_testdriver_intr.c
 mouse01_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_mouse01) \
-	$(support_includes) -I$(top_srcdir)/termios04
+	$(support_includes)
 endif
 
 if TEST_nanosleep
@@ -1448,9 +1444,9 @@ lib_tests += termios05
 lib_screens += termios05/termios05.scn
 lib_docs += termios05/termios05.doc
 termios05_SOURCES = termios05/init.c \
-	termios04/termios_testdriver_intr.c
+	termios05/termios_testdriver_task.c
 termios05_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_termios05) \
-	$(support_includes) -I$(top_srcdir)/termios04 -DTASK_DRIVEN
+	$(support_includes)
 endif
 
 if TEST_termios06
@@ -1460,7 +1456,7 @@ lib_docs += termios06/termios06.doc
 termios06_SOURCES = termios06/init.c \
 	termios03/termios_testdriver_polled.c termios06/test_pppd.c
 termios06_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_termios06) \
-	$(support_includes) -I$(top_srcdir)/termios03
+	$(support_includes)
 endif
 
 if TEST_termios07
@@ -1470,7 +1466,7 @@ lib_docs += termios07/termios07.doc
 termios07_SOURCES = termios07/init.c \
 	termios04/termios_testdriver_intr.c
 termios07_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_termios07) \
-	$(support_includes) -I$(top_srcdir)/termios04
+	$(support_includes)
 endif
 
 if TEST_termios08
@@ -1480,7 +1476,7 @@ lib_docs += termios08/termios08.doc
 termios08_SOURCES = termios08/init.c \
 	termios03/termios_testdriver_polled.c
 termios08_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_termios08) \
-	$(support_includes) -I$(top_srcdir)/termios03
+	$(support_includes)
 endif
 
 if TEST_termios09
@@ -1493,23 +1489,27 @@ termios09_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_termios09) \
 endif
 
 if TEST_termios10
+if HAS_POSIX
 lib_tests += termios10
 lib_screens += termios10/termios10.scn
 lib_docs += termios10/termios10.doc
 termios10_SOURCES  = termios10/init.c
 termios10_SOURCES += termios03/termios_testdriver_polled.c
 termios10_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_termios10) \
-	$(support_includes) -I$(top_srcdir)/termios03
+	$(support_includes)
+endif
 endif
 
 if TEST_termios11
+if HAS_POSIX
 lib_tests += termios11
 lib_screens += termios11/termios11.scn
 lib_docs += termios11/termios11.doc
-termios11_SOURCES  = termios10/init.c
+termios11_SOURCES  = termios11/init.c
 termios11_SOURCES += termios04/termios_testdriver_intr.c
 termios11_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_termios11) \
-	$(support_includes) -I$(top_srcdir)/termios04 -DINTERRUPT_DRIVEN
+	$(support_includes)
+endif
 endif
 
 if TEST_top
@@ -1560,7 +1560,7 @@ lib_docs += uid01/uid01.doc
 uid01_SOURCES = uid01/init.c uid01/serial_mouse_config.c \
 	uid01/msmouse.c termios04/termios_testdriver_intr.c
 uid01_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_uid01) \
-	$(support_includes) -I$(top_srcdir)/termios04
+	$(support_includes)
 endif
 
 if TEST_unlink

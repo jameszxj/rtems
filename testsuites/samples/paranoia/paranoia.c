@@ -2,7 +2,10 @@
 #include "config.h"
 #endif
 
-#include <bsp.h>
+#define CYGNUS
+#define NOMAIN
+#define NOSIGNAL
+
 /*
  *      A C version of Kahan's Floating Point Test "Paranoia"
  *

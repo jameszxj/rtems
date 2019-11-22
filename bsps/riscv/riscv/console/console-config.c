@@ -30,7 +30,7 @@
 
 #if RISCV_ENABLE_FRDME310ARTY_SUPPORT != 0
 #include <bsp/fe310-uart.h>
-fe310_uart_context driver_context;
+fe310_uart_context fe310_uart_instance;
 #endif
 
 #if RISCV_ENABLE_HTIF_SUPPORT != 0
@@ -161,7 +161,6 @@ static void riscv_console_probe(void)
       ns16550_context *ctx;
       fdt32_t *val;
       int len;
-      int reg_shift;
 
       ctx = &ns16550_instances[ns16550_devices];
       ctx->initial_baud = BSP_CONSOLE_BAUD;
@@ -169,11 +168,7 @@ static void riscv_console_probe(void)
       /* Get register shift property of the UART device */
       val = (fdt32_t *) fdt_getprop(fdt, node, "reg-shift", &len);
 
-      if (val) {
-        reg_shift = fdt32_to_cpu(val[0]);
-      }
-
-      if (reg_shift == 2) {
+      if (val != NULL && fdt32_to_cpu(val[0]) == 2) {
         ctx->get_reg = riscv_console_get_reg_32;
         ctx->set_reg = riscv_console_set_reg_32;
       } else {
@@ -222,12 +217,11 @@ static void riscv_console_probe(void)
 
 #if RISCV_ENABLE_FRDME310ARTY_SUPPORT != 0
     if (RISCV_CONSOLE_IS_COMPATIBLE(compat, compat_len, "sifive,uart0")) {
-      fe310_uart_context *ctx ;
+      fe310_uart_context *ctx;
 
-      ctx=&driver_context;
-      ctx->regs = (uintptr_t) riscv_fdt_get_address(fdt, node);
-      if (ctx->regs == 0)
-      {
+      ctx = &fe310_uart_instance;
+      ctx->regs = riscv_fdt_get_address(fdt, node);
+      if (ctx->regs == NULL) {
         bsp_fatal(RISCV_FATAL_NO_NS16550_REG_IN_DEVICE_TREE);
       }
 
@@ -273,7 +267,8 @@ rtems_status_code console_initialize(
 #endif
 
 #if RISCV_ENABLE_FRDME310ARTY_SUPPORT != 0
-  char path[] = "/dev/ttyS0";
+  fe310_uart_context *ctx;
+  char fe310_path[] = "/dev/ttyS0";
 #endif
 
   rtems_termios_initialize();
@@ -308,19 +303,17 @@ rtems_status_code console_initialize(
 #endif
 
 #if RISCV_ENABLE_FRDME310ARTY_SUPPORT != 0
-  fe310_uart_context * ctx = &driver_context;
-
+  ctx = &fe310_uart_instance;
   rtems_termios_device_install(
-    path,
+    fe310_path,
     &fe310_uart_handler,
     NULL,
     &ctx->base
   );
 
   if (&ctx->base == riscv_console.context) {
-    link(path, CONSOLE_DEVICE_NAME);
+    link(fe310_path, CONSOLE_DEVICE_NAME);
   }
-
 #endif
 
   return RTEMS_SUCCESSFUL;
