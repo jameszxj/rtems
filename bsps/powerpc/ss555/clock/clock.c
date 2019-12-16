@@ -52,8 +52,6 @@ extern int BSP_connect_clock_handler(rtems_isr_entry);
 extern int BSP_disconnect_clock_handler(void);
 extern uint32_t bsp_clicks_per_usec;
 
-void Clock_exit( void );
-
 /*
  *  ISR Handler
  */
@@ -119,7 +117,7 @@ int clockIsOn(void* unused)
  * Called via atexit()
  * Remove the clock interrupt handler by setting handler to NULL
  */
-void Clock_exit(void)
+static void Clock_exit(void)
 {
   (void) BSP_disconnect_clock_handler ();
 }
@@ -132,13 +130,7 @@ static void Install_clock(rtems_isr_entry clock_isr)
   atexit(Clock_exit);
 }
 
-rtems_device_driver Clock_initialize(
-  rtems_device_major_number major,
-  rtems_device_minor_number minor,
-  void *pargp
-)
+void _Clock_Initialize( void )
 {
   Install_clock( Clock_isr );
-
-  return RTEMS_SUCCESSFUL;
 }

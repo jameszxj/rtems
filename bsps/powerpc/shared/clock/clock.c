@@ -167,20 +167,7 @@ static int ppc_clock_exception_handler_ppc405(BSP_Exception_frame *frame, unsign
   return 0;
 }
 
-void Clock_exit(void)
-{
-  /* Set the decrementer to the maximum value */
-  ppc_set_decrementer_register( PPC_CLOCK_DECREMENTER_MAX);
-
-  /* Use default clock handler */
-  ppc_clock_tick = ppc_clock_no_tick;
-}
-
-rtems_device_driver Clock_initialize(
-  rtems_device_major_number major,
-  rtems_device_minor_number minor,
-  void *arg
-)
+void _Clock_Initialize( void )
 {
   uint64_t frequency = bsp_time_base_frequency;
   uint64_t us_per_tick = rtems_configuration_get_microseconds_per_tick();
@@ -242,6 +229,4 @@ rtems_device_driver Clock_initialize(
   ppc_tc.tc_frequency = frequency;
   ppc_tc.tc_quality = RTEMS_TIMECOUNTER_QUALITY_CLOCK_DRIVER;
   rtems_timecounter_install(&ppc_tc);
-
-  return RTEMS_SUCCESSFUL;
 }

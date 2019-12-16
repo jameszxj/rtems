@@ -21,7 +21,6 @@
 #include <rtems/score/objectimpl.h>
 #include <rtems/score/interr.h>
 #include <rtems/score/isrlock.h>
-#include <rtems/score/wkspace.h>
 #include <rtems/config.h>
 
 #define OBJECTS_MP_CONTROL_OF_ID_LOOKUP_NODE( node ) \
@@ -161,8 +160,8 @@ void _Objects_MP_Handler_early_initialization(void)
   uint32_t   node;
   uint32_t   maximum_nodes;
 
-  node                   = _Configuration_MP_table->node;
-  maximum_nodes          = _Configuration_MP_table->maximum_nodes;
+  node                   = _MPCI_Configuration.node;
+  maximum_nodes          = _MPCI_Configuration.maximum_nodes;
 
   if ( node < 1 || node > maximum_nodes )
     _Internal_error( INTERNAL_ERROR_INVALID_NODE );
@@ -175,7 +174,7 @@ void _Objects_MP_Handler_initialization( void )
 {
   uint32_t maximum_global_objects;
 
-  maximum_global_objects = _Configuration_MP_table->maximum_global_objects;
+  maximum_global_objects = _MPCI_Configuration.maximum_global_objects;
 
   _Objects_MP_Maximum_global_objects = maximum_global_objects;
 
@@ -185,11 +184,9 @@ void _Objects_MP_Handler_initialization( void )
 
   _Chain_Initialize(
     &_Objects_MP_Inactive_global_objects,
-    _Workspace_Allocate_or_fatal_error(
-      maximum_global_objects * sizeof( Objects_MP_Control )
-    ),
+    &_Objects_MP_Controls[ 0 ],
     maximum_global_objects,
-    sizeof( Objects_MP_Control )
+    sizeof( _Objects_MP_Controls[ 0 ] )
   );
 }
 

@@ -707,6 +707,15 @@ spclock_err02_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_spclock_err02) \
 	$(support_includes)
 endif
 
+if TEST_spclock_todhook01
+sp_tests += spclock_todhook01
+sp_screens += spclock_todhook01/spclock_todhook01.scn
+sp_docs += spclock_todhook01/spclock_todhook01.doc
+spclock_todhook01_SOURCES = spclock_todhook01/init.c
+spclock_todhook01_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_spclock_todhook01) \
+	$(support_includes)
+endif
+
 if TEST_spconfig01
 sp_tests += spconfig01
 sp_screens += spconfig01/spconfig01.scn
@@ -937,15 +946,6 @@ sp_screens += spfatal06/spfatal06.scn
 sp_docs += spfatal06/spfatal06.doc
 spfatal06_SOURCES = spfatal06/init.c
 spfatal06_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_spfatal06) \
-	$(support_includes)
-endif
-
-if TEST_spfatal08
-sp_tests += spfatal08
-sp_screens += spfatal08/spfatal08.scn
-sp_docs += spfatal08/spfatal08.doc
-spfatal08_SOURCES = spfatal08/init.c
-spfatal08_CPPFLAGS = $(AM_CPPFLAGS) $(TEST_FLAGS_spfatal08) \
 	$(support_includes)
 endif
 

@@ -202,26 +202,21 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
 /**
  * This is specified to configure the maximum number of POSIX FIFOs.
  */
-#if !defined(CONFIGURE_MAXIMUM_FIFOS)
-  #define CONFIGURE_MAXIMUM_FIFOS 0
+#ifdef CONFIGURE_MAXIMUM_FIFOS
+  #warning "CONFIGURE_MAXIMUM_FIFOS is obsolete since RTEMS 5.1; use CONFIGURE_IMFS_ENABLE_MKFIFO instead"
+  #if CONFIGURE_MAXIMUM_FIFOS > 0
+    #define CONFIGURE_IMFS_ENABLE_MKFIFO
+  #endif
 #endif
 
 /**
  * This is specified to configure the maximum number of POSIX named pipes.
  */
-#if !defined(CONFIGURE_MAXIMUM_PIPES)
-  #define CONFIGURE_MAXIMUM_PIPES 0
-#endif
-
-/*
- * This specifies the number of barriers required for the configured
- * number of FIFOs and named pipes.
- */
-#if CONFIGURE_MAXIMUM_FIFOS > 0 || CONFIGURE_MAXIMUM_PIPES > 0
-  #define _CONFIGURE_BARRIERS_FOR_FIFOS \
-    (2 * (CONFIGURE_MAXIMUM_FIFOS + CONFIGURE_MAXIMUM_PIPES))
-#else
-  #define _CONFIGURE_BARRIERS_FOR_FIFOS   0
+#ifdef CONFIGURE_MAXIMUM_PIPES
+  #warning "CONFIGURE_MAXIMUM_PIPES is obsolete since RTEMS 5.1; use CONFIGURE_IMFS_ENABLE_MKFIFO instead"
+  #if CONFIGURE_MAXIMUM_PIPES > 0
+    #define CONFIGURE_IMFS_ENABLE_MKFIFO
+  #endif
 #endif
 
 /**
@@ -586,7 +581,7 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
         #else
           &IMFS_mknod_control_memfile,
         #endif
-        #if CONFIGURE_MAXIMUM_FIFOS > 0 || CONFIGURE_MAXIMUM_PIPES > 0
+        #ifdef CONFIGURE_IMFS_ENABLE_MKFIFO
           &IMFS_mknod_control_fifo
         #else
           &IMFS_mknod_control_enosys
@@ -1558,6 +1553,14 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
 
 #ifdef CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER
   #include <rtems/clockdrv.h>
+
+  #ifdef CONFIGURE_INIT
+    RTEMS_SYSINIT_ITEM(
+      _Clock_Initialize,
+      RTEMS_SYSINIT_DEVICE_DRIVERS,
+      RTEMS_SYSINIT_ORDER_THIRD
+    );
+  #endif
 #endif
 
 #ifdef CONFIGURE_APPLICATION_NEEDS_TIMER_DRIVER
@@ -1619,9 +1622,6 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
     #ifdef CONFIGURE_APPLICATION_NEEDS_CONSOLE_DRIVER
       CONSOLE_DRIVER_TABLE_ENTRY,
     #endif
-    #ifdef CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER
-      CLOCK_DRIVER_TABLE_ENTRY,
-    #endif
     #ifdef CONFIGURE_APPLICATION_NEEDS_RTC_DRIVER
       RTC_DRIVER_TABLE_ENTRY,
     #endif
@@ -1649,7 +1649,6 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
     #ifdef CONFIGURE_APPLICATION_NEEDS_NULL_DRIVER
       NULL_DRIVER_TABLE_ENTRY
     #elif !defined(CONFIGURE_APPLICATION_NEEDS_CONSOLE_DRIVER) && \
-        !defined(CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER) && \
         !defined(CONFIGURE_APPLICATION_NEEDS_RTC_DRIVER) && \
         !defined(CONFIGURE_APPLICATION_NEEDS_STUB_DRIVER) && \
         !defined(CONFIGURE_APPLICATION_NEEDS_ZERO_DRIVER) && \
@@ -1813,62 +1812,67 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
    */
 
   #ifdef CONFIGURE_MP_APPLICATION
-    #define _CONFIGURE_TIMER_FOR_SHARED_MEMORY_DRIVER 1
+    #ifndef CONFIGURE_MP_NODE_NUMBER
+      #define CONFIGURE_MP_NODE_NUMBER                NODE_NUMBER
+    #endif
 
-    #ifndef CONFIGURE_HAS_OWN_MULTIPROCESSING_TABLE
+    #ifndef CONFIGURE_MP_MAXIMUM_NODES
+      #define CONFIGURE_MP_MAXIMUM_NODES              2
+    #endif
 
-      #ifndef CONFIGURE_MP_NODE_NUMBER
-        #define CONFIGURE_MP_NODE_NUMBER                NODE_NUMBER
+    #ifndef CONFIGURE_MP_MAXIMUM_GLOBAL_OBJECTS
+      #define CONFIGURE_MP_MAXIMUM_GLOBAL_OBJECTS     32
+    #endif
+
+    #ifndef CONFIGURE_MP_MAXIMUM_PROXIES
+      #define CONFIGURE_MP_MAXIMUM_PROXIES            32
+    #endif
+
+    #ifndef CONFIGURE_MP_MPCI_TABLE_POINTER
+      #include <mpci.h>
+      #define CONFIGURE_MP_MPCI_TABLE_POINTER         &MPCI_table
+    #endif
+
+    #ifdef CONFIGURE_INIT
+      #if CONFIGURE_MP_NODE_NUMBER < 1
+        #error "CONFIGURE_MP_NODE_NUMBER must be greater than or equal to one"
       #endif
 
-      #ifndef CONFIGURE_MP_MAXIMUM_NODES
-        #define CONFIGURE_MP_MAXIMUM_NODES              2
+      #if CONFIGURE_MP_NODE_NUMBER > CONFIGURE_MP_MAXIMUM_NODES
+        #error "CONFIGURE_MP_NODE_NUMBER must be less than or equal to CONFIGURE_MP_MAXIMUM_NODES"
       #endif
 
-      #ifndef CONFIGURE_MP_MAXIMUM_GLOBAL_OBJECTS
-        #define CONFIGURE_MP_MAXIMUM_GLOBAL_OBJECTS     32
-      #endif
-      #define _CONFIGURE_MEMORY_FOR_GLOBAL_OBJECTS(_global_objects) \
-        _Configure_From_workspace( \
-          (_global_objects) * sizeof(Objects_MP_Control) \
-        )
+      Objects_MP_Control _Objects_MP_Controls[
+        CONFIGURE_MP_MAXIMUM_GLOBAL_OBJECTS
+      ];
 
-      #ifndef CONFIGURE_MP_MAXIMUM_PROXIES
-        #define CONFIGURE_MP_MAXIMUM_PROXIES            32
-      #endif
-      #define _CONFIGURE_MEMORY_FOR_PROXIES(_proxies) \
-        _Configure_From_workspace((_proxies) \
-          * (sizeof(Thread_Proxy_control) \
-            + sizeof(Thread_queue_Configured_heads)))
+      struct Thread_Configured_proxy_control {
+        Thread_Proxy_control Control;
+        Thread_queue_Configured_heads Heads;
+      };
 
-      #ifndef CONFIGURE_MP_MPCI_TABLE_POINTER
-        #include <mpci.h>
-        #define CONFIGURE_MP_MPCI_TABLE_POINTER         &MPCI_table
-      #endif
+      static Thread_Configured_proxy_control _Thread_MP_Configured_proxies[
+        CONFIGURE_MP_MAXIMUM_PROXIES
+      ];
 
-      #ifdef CONFIGURE_INIT
-        rtems_multiprocessing_table Multiprocessing_configuration = {
-          CONFIGURE_MP_NODE_NUMBER,               /* local node number */
-          CONFIGURE_MP_MAXIMUM_NODES,             /* maximum # nodes */
-          CONFIGURE_MP_MAXIMUM_GLOBAL_OBJECTS,    /* maximum # global objects */
-          CONFIGURE_MP_MAXIMUM_PROXIES,           /* maximum # proxies */
-          CONFIGURE_EXTRA_MPCI_RECEIVE_SERVER_STACK, /* MPCI stack > minimum */
-          CONFIGURE_MP_MPCI_TABLE_POINTER         /* ptr to MPCI config table */
-        };
-      #endif
+      Thread_Configured_proxy_control * const _Thread_MP_Proxies =
+        &_Thread_MP_Configured_proxies[ 0 ];
 
-      #define CONFIGURE_MULTIPROCESSING_TABLE    &Multiprocessing_configuration
+      const MPCI_Configuration _MPCI_Configuration = {
+        CONFIGURE_MP_NODE_NUMBER,               /* local node number */
+        CONFIGURE_MP_MAXIMUM_NODES,             /* maximum # nodes */
+        CONFIGURE_MP_MAXIMUM_GLOBAL_OBJECTS,    /* maximum # global objects */
+        CONFIGURE_MP_MAXIMUM_PROXIES,           /* maximum # proxies */
+        CONFIGURE_EXTRA_MPCI_RECEIVE_SERVER_STACK, /* MPCI stack > minimum */
+        CONFIGURE_MP_MPCI_TABLE_POINTER         /* ptr to MPCI config table */
+      };
+    #endif
 
-      #define _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT 1
-
-    #endif /* CONFIGURE_HAS_OWN_MULTIPROCESSING_TABLE */
+    #define _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT 1
   #else
-    #define CONFIGURE_MULTIPROCESSING_TABLE NULL
-    #define _CONFIGURE_TIMER_FOR_SHARED_MEMORY_DRIVER 0
     #define _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT 0
   #endif /* CONFIGURE_MP_APPLICATION */
 #else
-  #define _CONFIGURE_TIMER_FOR_SHARED_MEMORY_DRIVER 0
   #define _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT 0
 #endif /* RTEMS_MULTIPROCESSING */
 /**@}*/ /* end of Multiprocessing Configuration */
@@ -1988,28 +1992,9 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
   #define CONFIGURE_MAXIMUM_TIMERS             0
 #endif
 
-#define _CONFIGURE_TIMERS \
-  (CONFIGURE_MAXIMUM_TIMERS + _CONFIGURE_TIMER_FOR_SHARED_MEMORY_DRIVER)
-
 #ifndef CONFIGURE_MAXIMUM_SEMAPHORES
   /** This specifies the maximum number of Classic API semaphores. */
   #define CONFIGURE_MAXIMUM_SEMAPHORES                 0
-#endif
-
-/*
- * This macro is calculated to specify the memory required for
- * Classic API Semaphores using MRSP. This is only available in
- * SMP configurations.
- */
-#if !defined(RTEMS_SMP) || \
-  !defined(CONFIGURE_MAXIMUM_MRSP_SEMAPHORES)
-  #define _CONFIGURE_MEMORY_FOR_MRSP_SEMAPHORES 0
-#else
-  #define _CONFIGURE_MEMORY_FOR_MRSP_SEMAPHORES \
-    CONFIGURE_MAXIMUM_MRSP_SEMAPHORES * \
-      _Configure_From_workspace( \
-        RTEMS_ARRAY_SIZE(_Scheduler_Table) * sizeof(Priority_Control) \
-      )
 #endif
 
 #ifndef CONFIGURE_MAXIMUM_MESSAGE_QUEUES
@@ -2059,13 +2044,6 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
 #ifndef CONFIGURE_MAXIMUM_BARRIERS
   #define CONFIGURE_MAXIMUM_BARRIERS               0
 #endif
-
-/*
- * This macro is calculated to specify the number of Classic API
- * Barriers required by the application and configured capabilities.
- */
-#define _CONFIGURE_BARRIERS \
-  (CONFIGURE_MAXIMUM_BARRIERS + _CONFIGURE_BARRIERS_FOR_FIFOS)
 
 #ifndef CONFIGURE_MAXIMUM_USER_EXTENSIONS
   /**
@@ -2124,7 +2102,7 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
     defined(CONFIGURE_INITIAL_EXTENSIONS) || \
     defined(CONFIGURE_STACK_CHECKER_ENABLED) || \
     (defined(RTEMS_NEWLIB) && !defined(CONFIGURE_DISABLE_NEWLIB_REENTRANCY))
-  static const rtems_extensions_table Configuration_Initial_Extensions[] = {
+  const User_extensions_Table _User_extensions_Initial_extensions[] = {
     #if CONFIGURE_RECORD_PER_PROCESSOR_ITEMS > 0 && \
       defined(CONFIGURE_RECORD_EXTENSIONS_ENABLED)
       RECORD_EXTENSION,
@@ -2143,18 +2121,18 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
     #endif
   };
 
-  #define _CONFIGURE_INITIAL_EXTENSION_TABLE Configuration_Initial_Extensions
-  #define _CONFIGURE_NUMBER_OF_INITIAL_EXTENSIONS \
-    RTEMS_ARRAY_SIZE(Configuration_Initial_Extensions)
+  const size_t _User_extensions_Initial_count =
+    RTEMS_ARRAY_SIZE( _User_extensions_Initial_extensions );
+
+  User_extensions_Switch_control _User_extensions_Initial_switch_controls[
+    RTEMS_ARRAY_SIZE( _User_extensions_Initial_extensions )
+  ];
 
   RTEMS_SYSINIT_ITEM(
     _User_extensions_Handler_initialization,
     RTEMS_SYSINIT_INITIAL_EXTENSIONS,
     RTEMS_SYSINIT_ORDER_MIDDLE
   );
-#else
-  #define _CONFIGURE_INITIAL_EXTENSION_TABLE NULL
-  #define _CONFIGURE_NUMBER_OF_INITIAL_EXTENSIONS 0
 #endif
 
 #if defined(RTEMS_NEWLIB) && !defined(CONFIGURE_DISABLE_NEWLIB_REENTRANCY)
@@ -2415,18 +2393,6 @@ struct _reent *__getreent(void)
   (_Configure_Max_Objects(_number_FP_tasks) \
     * _Configure_From_workspace(CONTEXT_FP_SIZE))
 
-/*
- * This defines the amount of memory configured for the multiprocessing
- * support required by this application.
- */
-#ifdef CONFIGURE_MP_APPLICATION
-  #define _CONFIGURE_MEMORY_FOR_MP \
-    (_CONFIGURE_MEMORY_FOR_PROXIES(CONFIGURE_MP_MAXIMUM_PROXIES) + \
-     _CONFIGURE_MEMORY_FOR_GLOBAL_OBJECTS(CONFIGURE_MP_MAXIMUM_GLOBAL_OBJECTS))
-#else
-  #define _CONFIGURE_MEMORY_FOR_MP  0
-#endif
-
 /**
  * The following macro is used to calculate the memory allocated by RTEMS
  * for the message buffers associated with a particular message queue.
@@ -2487,17 +2453,6 @@ struct _reent *__getreent(void)
   _CONFIGURE_MEMORY_FOR_INTERNAL_TASKS
 
 /**
- * This macro reserves the memory required by the statically configured
- * user extensions.
- */
-#define _CONFIGURE_MEMORY_FOR_STATIC_EXTENSIONS \
-  (_CONFIGURE_NUMBER_OF_INITIAL_EXTENSIONS == 0 ? 0 : \
-    _Configure_From_workspace( \
-      _CONFIGURE_NUMBER_OF_INITIAL_EXTENSIONS \
-        * sizeof(User_extensions_Switch_control) \
-    ))
-
-/**
  * This calculates the memory required for the executive workspace.
  *
  * This is an internal parameter.
@@ -2509,7 +2464,6 @@ struct _reent *__getreent(void)
      _CONFIGURE_TASKS, _CONFIGURE_TASKS) + \
    _CONFIGURE_MEMORY_FOR_TASKS( \
      _CONFIGURE_POSIX_THREADS, _CONFIGURE_POSIX_THREADS) + \
-   _CONFIGURE_MEMORY_FOR_MRSP_SEMAPHORES + \
    _CONFIGURE_MEMORY_FOR_POSIX_MESSAGE_QUEUES( \
      CONFIGURE_MAXIMUM_POSIX_MESSAGE_QUEUES) + \
    _CONFIGURE_MEMORY_FOR_POSIX_SEMAPHORES( \
@@ -2517,8 +2471,6 @@ struct _reent *__getreent(void)
    _CONFIGURE_MEMORY_FOR_POSIX_SHMS( \
      CONFIGURE_MAXIMUM_POSIX_SHMS) + \
    _CONFIGURE_MEMORY_FOR_POSIX_QUEUED_SIGNALS + \
-   _CONFIGURE_MEMORY_FOR_STATIC_EXTENSIONS + \
-   _CONFIGURE_MEMORY_FOR_MP + \
    CONFIGURE_MESSAGE_BUFFER_MEMORY + \
    (CONFIGURE_MEMORY_OVERHEAD * 1024) + \
    _CONFIGURE_HEAP_HANDLER_OVERHEAD \
@@ -2769,8 +2721,8 @@ struct _reent *__getreent(void)
     _CONFIGURE_IDLE_TASKS_COUNT + _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT
   );
 
-  #if _CONFIGURE_BARRIERS > 0
-    BARRIER_INFORMATION_DEFINE( _CONFIGURE_BARRIERS );
+  #if CONFIGURE_MAXIMUM_BARRIERS > 0
+    BARRIER_INFORMATION_DEFINE( CONFIGURE_MAXIMUM_BARRIERS );
   #endif
 
   #if CONFIGURE_MAXIMUM_MESSAGE_QUEUES > 0
@@ -2794,11 +2746,14 @@ struct _reent *__getreent(void)
   #endif
 
   #if CONFIGURE_MAXIMUM_SEMAPHORES > 0
-    SEMAPHORE_INFORMATION_DEFINE( CONFIGURE_MAXIMUM_SEMAPHORES );
+    SEMAPHORE_INFORMATION_DEFINE(
+      CONFIGURE_MAXIMUM_SEMAPHORES,
+      _CONFIGURE_SCHEDULER_COUNT
+    );
   #endif
 
-  #if _CONFIGURE_TIMERS > 0
-    TIMER_INFORMATION_DEFINE( _CONFIGURE_TIMERS );
+  #if CONFIGURE_MAXIMUM_TIMERS > 0
+    TIMER_INFORMATION_DEFINE( CONFIGURE_MAXIMUM_TIMERS );
   #endif
 
   #if _CONFIGURE_TASKS > 0
@@ -2922,11 +2877,6 @@ struct _reent *__getreent(void)
       #else
         false,
       #endif
-    #endif
-    _CONFIGURE_NUMBER_OF_INITIAL_EXTENSIONS,   /* number of static extensions */
-    _CONFIGURE_INITIAL_EXTENSION_TABLE,        /* pointer to static extensions */
-    #if defined(RTEMS_MULTIPROCESSING)
-      CONFIGURE_MULTIPROCESSING_TABLE,        /* pointer to MP config table */
     #endif
     #ifdef RTEMS_SMP
       _CONFIGURE_MAXIMUM_PROCESSORS,
@@ -3177,8 +3127,16 @@ struct _reent *__getreent(void)
   #warning "The CONFIGURE_HAS_OWN_MOUNT_TABLE configuration option is obsolete since RTEMS 5.1"
 #endif
 
+#ifdef CONFIGURE_HAS_OWN_MULTIPROCESSING_TABLE
+  #warning "The CONFIGURE_HAS_OWN_MOUNT_TABLE configuration option is obsolete since RTEMS 5.1"
+#endif
+
 #ifdef CONFIGURE_NUMBER_OF_TERMIOS_PORTS
   #warning "The CONFIGURE_NUMBER_OF_TERMIOS_PORTS configuration option is obsolete since RTEMS 5.1"
+#endif
+
+#ifdef CONFIGURE_MAXIMUM_MRSP_SEMAPHORES
+  #warning "The CONFIGURE_MAXIMUM_MRSP_SEMAPHORES configuration option is obsolete since RTEMS 5.1"
 #endif
 
 #ifdef CONFIGURE_MAXIMUM_POSIX_BARRIERS

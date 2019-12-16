@@ -58,7 +58,7 @@ volatile uint32_t Clock_driver_ticks;
 static uint32_t   pit_value, tick_time;
 static bool       auto_restart;
 
-void Clock_exit( void );
+static void Clock_exit( void );
 
 static inline uint32_t get_itimer(void)
 {
@@ -265,11 +265,7 @@ void Clock_exit(void)
   BSP_remove_rtems_irq_handler (&clockIrqConnData);
 }
 
-rtems_device_driver Clock_initialize(rtems_device_major_number major,
-                                     rtems_device_minor_number minor,
-                                     void *pargp)
+void _Clock_Initialize( void )
 {
   Install_clock( Clock_isr );
-
-  return RTEMS_SUCCESSFUL;
 }

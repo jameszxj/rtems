@@ -38,7 +38,15 @@ extern "C" {
  *  The following defines the control block used to manage each semaphore.
  */
 typedef struct {
-  /** This field is the object management portion of a Semaphore instance. */
+  /**
+   * @brief The object management portion of a semaphore instance.
+   *
+   * A pointer of the node of active semaphores contains the semaphore flags,
+   * see _Semaphore_Get_flags().  The rational for this optimization is a
+   * reduction of the semaphore control size in general and the ability to
+   * allow a configuration dependent size of the semaphore control block, e.g.
+   * for the MrsP semaphores.
+   */
   Objects_Control          Object;
 
   /**
@@ -72,24 +80,6 @@ typedef struct {
     MRSP_Control MRSP;
 #endif
   } Core_control;
-
-  /**
-   * @brief The semaphore variant.
-   *
-   * @see Semaphore_Variant.
-   */
-  unsigned int variant : 3;
-
-  /**
-   * @brief The semaphore thread queue discipline.
-   *
-   * @see Semaphore_Discipline.
-   */
-  unsigned int discipline : 1;
-
-#if defined(RTEMS_MULTIPROCESSING)
-  unsigned int is_global : 1;
-#endif
 }   Semaphore_Control;
 
 /**
@@ -118,9 +108,32 @@ void _Semaphore_MP_Send_extract_proxy (
  * This macro should only be used by <rtems/confdefs.h>.
  *
  * @param max The configured object maximum (the OBJECTS_UNLIMITED_OBJECTS flag
- * may be set).
+ *   may be set).
+ * @param scheduler_count The configured scheduler count (only used in SMP
+ *   configurations).
  */
-#define SEMAPHORE_INFORMATION_DEFINE( max ) \
+#if defined(RTEMS_SMP)
+#define SEMAPHORE_INFORMATION_DEFINE( max, scheduler_count ) \
+  typedef union { \
+    Objects_Control Object; \
+    Semaphore_Control Semaphore; \
+    struct { \
+      Objects_Control Object; \
+      MRSP_Control Control; \
+      Priority_Control ceiling_priorities[ scheduler_count ]; \
+    } MRSP; \
+  } Semaphore_Configured_control; \
+  OBJECTS_INFORMATION_DEFINE( \
+    _Semaphore, \
+    OBJECTS_CLASSIC_API, \
+    OBJECTS_RTEMS_SEMAPHORES, \
+    Semaphore_Configured_control, \
+    max, \
+    OBJECTS_NO_STRING_NAME, \
+    _Semaphore_MP_Send_extract_proxy \
+  )
+#else
+#define SEMAPHORE_INFORMATION_DEFINE( max, scheduler_count ) \
   OBJECTS_INFORMATION_DEFINE( \
     _Semaphore, \
     OBJECTS_CLASSIC_API, \
@@ -130,6 +143,7 @@ void _Semaphore_MP_Send_extract_proxy (
     OBJECTS_NO_STRING_NAME, \
     _Semaphore_MP_Send_extract_proxy \
   )
+#endif
 
 /** @} */
 

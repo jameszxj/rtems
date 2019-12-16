@@ -17,6 +17,7 @@
 #ifndef __SHM_h
 #define __SHM_h
 
+#include <rtems.h>
 #include <rtems/clockdrv.h>
 
 #ifdef __cplusplus
@@ -238,7 +239,7 @@ extern "C" {
 /* macros */
 
 #define Shm_Is_master_node()  \
-  ( SHM_MASTER ==_Configuration_MP_table-> node )
+  ( SHM_MASTER == rtems_object_get_local_node() )
 
 #define Shm_Free_envelope( ecb ) \
   Shm_Locked_queue_Add( FREE_ENV_CB, (ecb) )
@@ -432,7 +433,7 @@ struct shm_config_info {
 
 typedef struct shm_config_info shm_config_table;
 
-#define SHM_MAXIMUM_NODES Multiprocessing_configuration.maximum_nodes
+#define SHM_MAXIMUM_NODES _MPCI_Configuration.maximum_nodes
 
 /* global variables */
 

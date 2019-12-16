@@ -29,8 +29,6 @@
 
 volatile uint32_t Clock_driver_ticks;
 
-void Clock_exit(void);
-
 static rtems_isr clockISR(rtems_vector_number vector) {
 
   Clock_driver_ticks += 1;
@@ -50,21 +48,12 @@ static rtems_isr clockISR(rtems_vector_number vector) {
  *  This routine allows the clock driver to exit by masking the interrupt and
  *  disabling the clock's counter.
  */
-void Clock_exit(void)
+static void Clock_exit(void)
 {
   *(uint32_t volatile *) TCNTL = 0;
 }
 
-/*
- *  Clock_initialize
- *
- *  This routine initializes the clock driver.
- */
-rtems_device_driver Clock_initialize(
-  rtems_device_major_number major,
-  rtems_device_minor_number minor,
-  void *pargp
-)
+void _Clock_Initialize( void )
 {
   Clock_driver_ticks = 0;
 
@@ -77,6 +66,4 @@ rtems_device_driver Clock_initialize(
   *(uint32_t volatile *) TCNTL = TCNTL_TMPWR | TCNTL_TAUTORLD | TCNTL_TMREN;
 
   atexit(Clock_exit);
-
-  return RTEMS_SUCCESSFUL;
 }

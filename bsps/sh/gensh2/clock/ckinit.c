@@ -42,6 +42,8 @@
 #include <rtems/score/ispsh7045.h>
 #include <rtems/score/iosh7045.h>
 
+static void Clock_exit( void );
+
 extern uint32_t bsp_clicks_per_second;
 
 #define _MTU_COUNTER0_MICROSECOND (Clock_MHZ/16)
@@ -226,18 +228,7 @@ void Clock_exit( void )
   /* old vector shall not be installed */
 }
 
-/*
- *  Clock_initialize
- *
- *  Device driver entry point for clock tick driver initialization.
- */
-rtems_device_driver Clock_initialize(
-  rtems_device_major_number major,
-  rtems_device_minor_number minor,
-  void *pargp
-)
+void _Clock_Initialize( void )
 {
   Install_clock( Clock_isr );
-
-  return RTEMS_SUCCESSFUL;
 }
