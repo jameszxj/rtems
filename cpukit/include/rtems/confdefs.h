@@ -143,13 +143,18 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
 #endif
 #endif
 
+#ifdef CONFIGURE_LIBIO_MAXIMUM_FILE_DESCRIPTORS
+  #warning "CONFIGURE_LIBIO_MAXIMUM_FILE_DESCRIPTORS has been renamed to CONFIGURE_MAXIMUM_FILE_DESCRIPTORS since RTEMS 5.1"
+  #define CONFIGURE_MAXIMUM_FILE_DESCRIPTORS CONFIGURE_LIBIO_MAXIMUM_FILE_DESCRIPTORS
+#endif
+
 /**
  * This macro defines the number of POSIX file descriptors allocated
  * and managed by libio.  These are the "integer" file descriptors that
  * are used by calls like open(2) and read(2).
  */
-#ifndef CONFIGURE_LIBIO_MAXIMUM_FILE_DESCRIPTORS
-  #define CONFIGURE_LIBIO_MAXIMUM_FILE_DESCRIPTORS 3
+#ifndef CONFIGURE_MAXIMUM_FILE_DESCRIPTORS
+  #define CONFIGURE_MAXIMUM_FILE_DESCRIPTORS 3
 #endif
 
 /*
@@ -158,7 +163,7 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
 #define _CONFIGURE_LIBIO_POSIX_KEYS 1
 
 #ifdef CONFIGURE_INIT
-  rtems_libio_t rtems_libio_iops[CONFIGURE_LIBIO_MAXIMUM_FILE_DESCRIPTORS];
+  rtems_libio_t rtems_libio_iops[CONFIGURE_MAXIMUM_FILE_DESCRIPTORS];
 
   /**
    * When instantiating the configuration tables, this variable is
@@ -911,8 +916,7 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
 
   #if !defined(CONFIGURE_SCHEDULER_TABLE_ENTRIES)
     /** Configure the context needed by the scheduler instance */
-    #define CONFIGURE_SCHEDULER \
-      RTEMS_SCHEDULER_EDF_SMP(dflt, _CONFIGURE_MAXIMUM_PROCESSORS)
+    #define CONFIGURE_SCHEDULER RTEMS_SCHEDULER_EDF_SMP(dflt)
 
     /** Configure the controls for this scheduler instance */
     #define CONFIGURE_SCHEDULER_TABLE_ENTRIES \
@@ -1599,8 +1603,6 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
   #include <libchip/ata.h>
 #endif
 
-#ifndef CONFIGURE_HAS_OWN_DEVICE_DRIVER_TABLE
-
 /**
  * This specifies the maximum number of device drivers that
  * can be installed in the system at one time.  It must account
@@ -1663,8 +1665,6 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
   const size_t _IO_Number_of_drivers =
     RTEMS_ARRAY_SIZE( _IO_Driver_address_table );
 #endif
-
-#endif  /* CONFIGURE_HAS_OWN_DEVICE_DRIVER_TABLE */
 
 #ifdef CONFIGURE_APPLICATION_NEEDS_ATA_DRIVER
   /*
@@ -2313,56 +2313,12 @@ struct _reent *__getreent(void)
 /**@}*/  /* end of POSIX API Configuration */
 
 /**
- * @defgroup ConfigurationGNAT GNAT/RTEMS Configuration
- *
- * @addtogroup Configuration
- *
- *  This modules includes configuration parameters for applications which
- *  use GNAT/RTEMS. GNAT implements each Ada task as a POSIX thread.
- */
-/**@{*/
-#ifdef CONFIGURE_GNAT_RTEMS
-  /**
-   * This is the maximum number of Ada tasks which can be concurrently
-   * in existence.  Twenty (20) are required to run all tests in the
-   * ACATS (formerly ACVC).
-   */
-  #ifndef CONFIGURE_MAXIMUM_ADA_TASKS
-    #define CONFIGURE_MAXIMUM_ADA_TASKS  20
-  #endif
-
-  /**
-   * This is the number of non-Ada tasks which invoked Ada code.
-   */
-  #ifndef CONFIGURE_MAXIMUM_FAKE_ADA_TASKS
-    #define CONFIGURE_MAXIMUM_FAKE_ADA_TASKS 0
-  #endif
-#else
-  /** This defines he number of POSIX mutexes GNAT needs. */
-  /** This defines he number of Ada tasks needed by the application. */
-  #define CONFIGURE_MAXIMUM_ADA_TASKS      0
-  /**
-   * This defines he number of non-Ada tasks/threads that will invoke
-   * Ada subprograms or functions.
-   */
-  #define CONFIGURE_MAXIMUM_FAKE_ADA_TASKS 0
-#endif
-/**@}*/  /* end of GNAT Configuration */
-
-/**
  * This is so we can account for tasks with stacks greater than minimum
  * size.  This is in bytes.
  */
 #ifndef CONFIGURE_EXTRA_TASK_STACKS
   #define CONFIGURE_EXTRA_TASK_STACKS 0
 #endif
-
-/**
- * This macro provides a summation of the various POSIX thread requirements.
- */
-#define _CONFIGURE_POSIX_THREADS \
-   (CONFIGURE_MAXIMUM_POSIX_THREADS + \
-     CONFIGURE_MAXIMUM_ADA_TASKS)
 
 /*
  * We must be able to split the free block used for the second last allocation
@@ -2463,7 +2419,7 @@ struct _reent *__getreent(void)
    _CONFIGURE_MEMORY_FOR_TASKS( \
      _CONFIGURE_TASKS, _CONFIGURE_TASKS) + \
    _CONFIGURE_MEMORY_FOR_TASKS( \
-     _CONFIGURE_POSIX_THREADS, _CONFIGURE_POSIX_THREADS) + \
+     CONFIGURE_MAXIMUM_POSIX_THREADS, CONFIGURE_MAXIMUM_POSIX_THREADS) + \
    _CONFIGURE_MEMORY_FOR_POSIX_MESSAGE_QUEUES( \
      CONFIGURE_MAXIMUM_POSIX_MESSAGE_QUEUES) + \
    _CONFIGURE_MEMORY_FOR_POSIX_SEMAPHORES( \
@@ -2545,14 +2501,6 @@ struct _reent *__getreent(void)
   (_Configure_Max_Objects( CONFIGURE_MAXIMUM_POSIX_THREADS ) * \
     _Configure_From_stackspace( CONFIGURE_MINIMUM_POSIX_THREAD_STACK_SIZE ) )
 
-/*
- * This macro is calculated to specify the memory required for
- * the stacks of all Ada tasks.
- */
-#define _CONFIGURE_ADA_TASKS_STACK \
-  (_Configure_Max_Objects( CONFIGURE_MAXIMUM_ADA_TASKS ) * \
-    _Configure_From_stackspace( CONFIGURE_MINIMUM_POSIX_THREAD_STACK_SIZE ) )
-
 #else /* CONFIGURE_EXECUTIVE_RAM_SIZE */
 
 #define _CONFIGURE_IDLE_TASKS_STACK 0
@@ -2560,7 +2508,6 @@ struct _reent *__getreent(void)
 #define _CONFIGURE_INITIALIZATION_THREADS_EXTRA_STACKS 0
 #define _CONFIGURE_TASKS_STACK 0
 #define _CONFIGURE_POSIX_THREADS_STACK 0
-#define _CONFIGURE_ADA_TASKS_STACK 0
 
 #if CONFIGURE_EXTRA_MPCI_RECEIVE_SERVER_STACK != 0
   #error "CONFIGURE_EXECUTIVE_RAM_SIZE defined with request for CONFIGURE_EXTRA_MPCI_RECEIVE_SERVER_STACK"
@@ -2583,7 +2530,6 @@ struct _reent *__getreent(void)
     _CONFIGURE_INITIALIZATION_THREADS_EXTRA_STACKS + \
     _CONFIGURE_TASKS_STACK + \
     _CONFIGURE_POSIX_THREADS_STACK + \
-    _CONFIGURE_ADA_TASKS_STACK + \
     CONFIGURE_EXTRA_MPCI_RECEIVE_SERVER_STACK + \
     _CONFIGURE_LIBBLOCK_TASK_EXTRA_STACKS + \
     CONFIGURE_EXTRA_TASK_STACKS + \
@@ -2712,7 +2658,7 @@ struct _reent *__getreent(void)
   const size_t _Thread_Initial_thread_count = _CONFIGURE_IDLE_TASKS_COUNT +
     _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT +
     rtems_resource_maximum_per_allocation( _CONFIGURE_TASKS ) +
-    rtems_resource_maximum_per_allocation( _CONFIGURE_POSIX_THREADS );
+    rtems_resource_maximum_per_allocation( CONFIGURE_MAXIMUM_POSIX_THREADS );
 
   THREAD_INFORMATION_DEFINE(
     _Thread,
@@ -2806,7 +2752,7 @@ struct _reent *__getreent(void)
     POSIX_SHM_INFORMATION_DEFINE( CONFIGURE_MAXIMUM_POSIX_SHMS );
   #endif
 
-  #if _CONFIGURE_POSIX_THREADS > 0
+  #if CONFIGURE_MAXIMUM_POSIX_THREADS > 0
     THREAD_INFORMATION_DEFINE(
       _POSIX_Threads,
       OBJECTS_POSIX_API,
@@ -3028,12 +2974,10 @@ struct _reent *__getreent(void)
  *  tasks/threads so there is a smaller set of calls to _Workspace_Allocate
  *  to analyze.
  */
-#if !defined(CONFIGURE_IDLE_TASK_INITIALIZES_APPLICATION)
-  #if (CONFIGURE_MAXIMUM_TASKS == 0) && \
-      (CONFIGURE_MAXIMUM_POSIX_THREADS == 0) && \
-      (CONFIGURE_MAXIMUM_ADA_TASKS == 0)
-    #error "CONFIGURATION ERROR: No tasks or threads configured!!"
-  #endif
+#if !defined(CONFIGURE_IDLE_TASK_INITIALIZES_APPLICATION) \
+  && CONFIGURE_MAXIMUM_TASKS == 0 \
+  && CONFIGURE_MAXIMUM_POSIX_THREADS == 0
+  #error "CONFIGURATION ERROR: No tasks or threads configured!!"
 #endif
 
 #ifndef RTEMS_SCHEDSIM
@@ -3058,33 +3002,31 @@ struct _reent *__getreent(void)
 #endif
 
 #if !defined(RTEMS_SCHEDSIM)
-  #if !defined(CONFIGURE_HAS_OWN_DEVICE_DRIVER_TABLE)
-    /*
-     *  You must either explicity include or exclude the clock driver.
-     *  It is such a common newbie error to leave it out.  Maybe this
-     *  will put an end to it.
-     *
-     *  NOTE: If you are using the timer driver, it is considered
-     *        mutually exclusive with the clock driver because the
-     *        drivers are assumed to use the same "timer" hardware
-     *        on many boards.
-     */
-    #if !defined(CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER) && \
-        !defined(CONFIGURE_APPLICATION_DOES_NOT_NEED_CLOCK_DRIVER) && \
-        !defined(CONFIGURE_APPLICATION_NEEDS_TIMER_DRIVER)
-      #error "CONFIGURATION ERROR: Do you want the clock driver or not?!?"
-     #endif
+/*
+ *  You must either explicitly include or exclude the clock driver.
+ *  It is such a common newbie error to leave it out.  Maybe this
+ *  will put an end to it.
+ *
+ *  NOTE: If you are using the timer driver, it is considered
+ *        mutually exclusive with the clock driver because the
+ *        drivers are assumed to use the same "timer" hardware
+ *        on many boards.
+ */
+#if !defined(CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER) && \
+    !defined(CONFIGURE_APPLICATION_DOES_NOT_NEED_CLOCK_DRIVER) && \
+    !defined(CONFIGURE_APPLICATION_NEEDS_TIMER_DRIVER)
+  #error "CONFIGURATION ERROR: Do you want the clock driver or not?!?"
+ #endif
 
-    /*
-     * Only one of the following three configuration parameters should be
-     * defined at a time.
-     */
-    #if ((defined(CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER) + \
-          defined(CONFIGURE_APPLICATION_NEEDS_TIMER_DRIVER) + \
-          defined(CONFIGURE_APPLICATION_DOES_NOT_NEED_CLOCK_DRIVER)) > 1)
-       #error "CONFIGURATION ERROR: More than one clock/timer driver configuration parameter specified?!?"
-    #endif
-  #endif /* !defined(CONFIGURE_HAS_OWN_DEVICE_DRIVER_TABLE) */
+/*
+ * Only one of the following three configuration parameters should be
+ * defined at a time.
+ */
+#if ((defined(CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER) + \
+      defined(CONFIGURE_APPLICATION_NEEDS_TIMER_DRIVER) + \
+      defined(CONFIGURE_APPLICATION_DOES_NOT_NEED_CLOCK_DRIVER)) > 1)
+   #error "CONFIGURATION ERROR: More than one clock/timer driver configuration parameter specified?!?"
+#endif
 #endif   /* !defined(RTEMS_SCHEDSIM) */
 
 /*
@@ -3119,6 +3061,10 @@ struct _reent *__getreent(void)
   #warning "The CONFIGURE_HAS_OWN_CONFIGURATION_TABLE configuration option is obsolete since RTEMS 5.1"
 #endif
 
+#ifdef CONFIGURE_HAS_OWN_DEVICE_DRIVER_TABLE
+  #warning "The CONFIGURE_HAS_OWN_DEVICE_DRIVER_TABLE configuration option is obsolete since RTEMS 5.1"
+#endif
+
 #ifdef CONFIGURE_HAS_OWN_FILESYSTEM_TABLE
   #warning "The CONFIGURE_HAS_OWN_FILESYSTEM_TABLE configuration option is obsolete since RTEMS 5.1"
 #endif
@@ -3133,6 +3079,14 @@ struct _reent *__getreent(void)
 
 #ifdef CONFIGURE_NUMBER_OF_TERMIOS_PORTS
   #warning "The CONFIGURE_NUMBER_OF_TERMIOS_PORTS configuration option is obsolete since RTEMS 5.1"
+#endif
+
+#ifdef CONFIGURE_MAXIMUM_ADA_TASKS
+  #warning "The CONFIGURE_MAXIMUM_ADA_TASKS configuration option is obsolete since RTEMS 5.1"
+#endif
+
+#ifdef CONFIGURE_MAXIMUM_FAKE_ADA_TASKS
+  #warning "The CONFIGURE_MAXIMUM_FAKE_ADA_TASKS configuration option is obsolete since RTEMS 5.1"
 #endif
 
 #ifdef CONFIGURE_MAXIMUM_MRSP_SEMAPHORES
@@ -3197,6 +3151,10 @@ struct _reent *__getreent(void)
 
 #ifdef CONFIGURE_ENABLE_GO
   #warning "The CONFIGURE_ENABLE_GO configuration option is obsolete since RTEMS 5.1"
+#endif
+
+#ifdef CONFIGURE_GNAT_RTEMS
+  #warning "The CONFIGURE_GNAT_RTEMS configuration option is obsolete since RTEMS 5.1"
 #endif
 
 #ifdef CONFIGURE_MAXIMUM_GOROUTINES
