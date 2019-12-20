@@ -32,8 +32,7 @@
 
 #include <rtems.h>
 #include <rtems/bspIo.h>
-#include <rtems/timecounter.h>
-#include <rtems/sysinit.h>
+#include <rtems/score/threaddispatch.h>
 
 #include "t-self-test.h"
 
@@ -54,7 +53,6 @@ typedef struct {
 	const char *c;
 	size_t case_begin_count;
 	size_t case_end_count;
-	struct timecounter tc;
 	T_putchar putchar;
 	void *putchar_arg;
 	const char *censor_c;
@@ -114,6 +112,10 @@ static void
 case_late(const char *name)
 {
 	test_context *ctx;
+
+	if (strcmp(name, "check_task_context") == 0) {
+		_Thread_Dispatch_enable(_Per_CPU_Get());
+	}
 
 	ctx = &test_instance;
 	++ctx->case_end_count;
@@ -180,8 +182,8 @@ run_initialize(void)
 	T_set_putchar(censor_putchar, ctx, &ctx->putchar, &ctx->putchar_arg);
 }
 
-static const char expected_final[] = "Z:ttest01:C:341:N:1316:F:790:D:0.682999\n"
-"Y:ReportHash:SHA256:62d6f3b37299137932ea2c2f0505c8b8f12b95749c81d5af19570e9470203475\n";
+static const char expected_final[] = "Z:ttest01:C:342:N:1316:F:791:D:0.687999\n"
+"Y:ReportHash:SHA256:d4c293b499e6e557afcf6123cb604e8976cc5b987021f1f8c9f6193fc38a386e\n";
 
 static void
 run_finalize(void)
@@ -226,33 +228,12 @@ now(void)
 	return t * SBT_1MS;
 }
 
-static uint32_t
-get_timecount(struct timecounter *tc)
-{
-	return 0;
-}
-
-static void
-install_timecounter(void)
-{
-	test_context *ctx;
-
-	ctx = &test_instance;
-	ctx->tc.tc_get_timecount = get_timecount;
-	ctx->tc.tc_counter_mask = 0xffffffff;
-	ctx->tc.tc_frequency = 1000000000;
-	ctx->tc.tc_quality = RTEMS_TIMECOUNTER_QUALITY_CLOCK_DRIVER + 1;
-	rtems_timecounter_install(&ctx->tc);
-}
-
-RTEMS_SYSINIT_ITEM(install_timecounter, RTEMS_SYSINIT_DEVICE_DRIVERS,
-    RTEMS_SYSINIT_ORDER_FIRST);
-
 static char buffer[512];
 
 static const T_action actions[] = {
 	T_report_hash_sha256,
 	test_action,
+	T_check_task_context,
 	T_check_file_descriptors,
 	T_check_rtems_barriers,
 	T_check_rtems_extensions,

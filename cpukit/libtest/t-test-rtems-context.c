@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (C) 2018 embedded brains GmbH
+ * Copyright (C) 2019 embedded brains GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,57 +25,43 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#undef __STRICT_ANSI__
+
 #include <t.h>
 
-#include <rtems/libio_.h>
+#include <rtems/score/isrlevel.h>
+#include <rtems/score/percpu.h>
+#include <rtems/score/threaddispatch.h>
 
-static int T_open_fds;
-
-static int
-T_count_open_fds(void)
-{
-	int free_count;
-	rtems_libio_t *iop;
-
-	free_count = 0;
-	rtems_libio_lock();
-
-	iop = rtems_libio_iop_free_head;
-	while (iop != NULL) {
-		++free_count;
-		iop = iop->data1;
-	}
-
-	rtems_libio_unlock();
-	return (int)rtems_libio_number_iops - free_count;
-}
+#include <inttypes.h>
 
 static void
-T_check_open_fds(void)
+T_do_check_task_context(void)
 {
-	int open_fds;
-	int delta;
+	uint32_t v;
 
-	open_fds = T_count_open_fds();
-	delta = open_fds - T_open_fds;
+	v = _Thread_Dispatch_get_disable_level();
+	T_check_true(v == 0, NULL,
+	    "Wrong thread dispatch disabled level (%" PRIu32 ")", v);
 
-	if (delta != 0) {
-		T_open_fds = open_fds;
-		T_check_true(false, NULL, "file descriptor leak (%+i)", delta);
-	}
+	v = _ISR_Nest_level;
+	T_check_true(v == 0, NULL,
+	    "Wrong ISR nest level (%" PRIu32 ")", v);
+
+	v = _ISR_Get_level();
+	T_check_true(v == 0, NULL,
+	    "Wrong ISR level (%" PRIu32 ")", v);
 }
 
 void
-T_check_file_descriptors(T_event event, const char *name)
+T_check_task_context(T_event event, const char *name)
 {
 	(void)name;
 
 	switch (event) {
-	case T_EVENT_RUN_INITIALIZE_EARLY:
-		T_open_fds = T_count_open_fds();
-		break;
+	case T_EVENT_RUN_INITIALIZE_LATE:
 	case T_EVENT_CASE_END:
-		T_check_open_fds();
+		T_do_check_task_context();
 		break;
 	default:
 		break;

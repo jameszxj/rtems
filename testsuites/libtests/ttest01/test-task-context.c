@@ -1,7 +1,29 @@
+#include <t.h>
+
+#include <rtems/score/threaddispatch.h>
+
+T_TEST_CASE(check_task_context)
+{
+	_Thread_Dispatch_disable();
+}
+
+#include "t-self-test.h"
+
+T_TEST_OUTPUT(check_task_context,
+"B:check_task_context\n"
+"F:*:0:UI1:*:*:Wrong thread dispatch disabled level (1)\n"
+"E:check_task_context:N:0:F:1:D:0.001000\n");
+
 /*
- * SPDX-License-Identifier: BSD-2-Clause
+ * The license is at the end of the file to be able to use the test code and
+ * output in examples in the documentation.  This is also the reason for the
+ * dual licensing.  The license for RTEMS documentation is CC-BY-SA-4.0.
+ */
+
+/*
+ * SPDX-License-Identifier: BSD-2-Clause OR CC-BY-SA-4.0
  *
- * Copyright (C) 2018 embedded brains GmbH
+ * Copyright (C) 2019 embedded brains GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,61 +45,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * ALTERNATIVELY, this software may be distributed under the terms of the
+ * Creative Commons Attribution-ShareAlike 4.0 International Public License as
+ * published by Creative Commons, PO Box 1866, Mountain View, CA 94042
+ * (https://creativecommons.org/licenses/by-sa/4.0/legalcode).
  */
-
-#include <t.h>
-
-#include <rtems/libio_.h>
-
-static int T_open_fds;
-
-static int
-T_count_open_fds(void)
-{
-	int free_count;
-	rtems_libio_t *iop;
-
-	free_count = 0;
-	rtems_libio_lock();
-
-	iop = rtems_libio_iop_free_head;
-	while (iop != NULL) {
-		++free_count;
-		iop = iop->data1;
-	}
-
-	rtems_libio_unlock();
-	return (int)rtems_libio_number_iops - free_count;
-}
-
-static void
-T_check_open_fds(void)
-{
-	int open_fds;
-	int delta;
-
-	open_fds = T_count_open_fds();
-	delta = open_fds - T_open_fds;
-
-	if (delta != 0) {
-		T_open_fds = open_fds;
-		T_check_true(false, NULL, "file descriptor leak (%+i)", delta);
-	}
-}
-
-void
-T_check_file_descriptors(T_event event, const char *name)
-{
-	(void)name;
-
-	switch (event) {
-	case T_EVENT_RUN_INITIALIZE_EARLY:
-		T_open_fds = T_count_open_fds();
-		break;
-	case T_EVENT_CASE_END:
-		T_check_open_fds();
-		break;
-	default:
-		break;
-	};
-}
