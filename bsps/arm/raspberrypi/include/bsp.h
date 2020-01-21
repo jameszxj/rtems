@@ -41,6 +41,10 @@ extern "C" {
 
 #define BSP_FEATURE_IRQ_EXTENSION
 
+#if BSP_START_COPY_FDT_FROM_U_BOOT
+#define BSP_FDT_IS_SUPPORTED
+#endif
+
 #define RPI_L2_CACHE_ENABLE 1
 
 #define BSP_GPIO_PIN_COUNT 32
@@ -49,6 +53,8 @@ extern "C" {
 
 #define BSP_CONSOLE_UART0   0
 #define BSP_CONSOLE_FB      1
+
+void *raspberrypi_get_reg_of_node(const void *fdt, int node);
 
 void rpi_init_cmdline(void);
 const char *rpi_cmdline_get_cached(void);

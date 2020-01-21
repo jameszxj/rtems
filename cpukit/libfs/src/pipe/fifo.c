@@ -290,8 +290,6 @@ ssize_t pipe_read(
     pipe->waitingReaders ++;
     PIPE_READWAIT(pipe);
     pipe->waitingReaders --;
-    if (ret != 0)
-      goto out_locked;
   }
 
   /* Read chunk bytes */
@@ -357,8 +355,6 @@ ssize_t pipe_write(
       pipe->waitingWriters ++;
       PIPE_WRITEWAIT(pipe);
       pipe->waitingWriters --;
-      if (ret != 0)
-        goto out_locked;
 
       if (pipe->Readers == 0) {
         ret = -EPIPE;

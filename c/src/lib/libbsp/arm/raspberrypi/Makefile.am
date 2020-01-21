@@ -45,11 +45,11 @@ librtemsbsp_a_SOURCES += ../../../../../../bsps/shared/start/sbrk.c
 librtemsbsp_a_SOURCES += ../../../../../../bsps/shared/start/stackalloc.c
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/shared/start/bsp-start-memcpy.S
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/shared/cp15/arm-cp15-set-ttb-entries.c
+librtemsbsp_a_SOURCES += ../../../../../../bsps/shared/start/bsp-fdt.c
 
 # Startup
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/start/bspstart.c
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/start/cmdline.c
-librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/start/bspgetworkarea.c
 if HAS_SMP
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/start/bspsmp.c
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/start/bspsmp_init.c
@@ -63,11 +63,9 @@ librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/shared/cp15/arm-cp15-set-exc
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/irq/irq.c
 
 # Console
-librtemsbsp_a_SOURCES += ../../../../../../bsps/shared/dev/serial/legacy-console.c
-librtemsbsp_a_SOURCES += ../../../../../../bsps/shared/dev/serial/legacy-console-control.c
+librtemsbsp_a_SOURCES += ../../../../../../bsps/shared/dev/serial/console-termios.c
+librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/shared/serial/arm-pl011.c
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/console/console-config.c
-librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/console/console_select.c
-librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/console/usart.c
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/console/fb.c
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/console/fbcons.c
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/console/outch.c
@@ -104,9 +102,6 @@ librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/shared/cache/cache-v7ar-disa
 
 # Start hooks
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/start/bspstarthooks.c
-
-# LIBMM
-librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/raspberrypi/start/mm_config_table.c
 
 ###############################################################################
 #                  Special Rules                                              #
