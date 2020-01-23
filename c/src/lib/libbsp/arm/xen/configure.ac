@@ -26,6 +26,16 @@ RTEMS_BSPOPTS_HELP([ARM_GENERIC_TIMER_USE_VIRTUAL],[use virtual ARM generic time
 RTEMS_BSPOPTS_SET([ARM_GENERIC_TIMER_UNMASK_AT_TICK],[*],[1])
 RTEMS_BSPOPTS_HELP([ARM_GENERIC_TIMER_UNMASK_AT_TICK],[unmask the timer in the tick handler, since Xen will mask the virtual timer before injecting the interrupt to the guest])
 
+RTEMS_BSPOPTS_SET([USE_IRQ_GICV2],[xen_gicv2],[1])
+RTEMS_BSPOPTS_SET([USE_IRQ_GICV2],[*],[0])
+RTEMS_BSPOPTS_HELP([USE_IRQ_GICV2],[use the GICv2 interrupt controller driver])
+AM_CONDITIONAL(USE_IRQ_GICV2,test "$USE_IRQ_GICV2" = "1")
+
+RTEMS_BSPOPTS_SET([USE_IRQ_GICV3],[xen_gicv3],[1])
+RTEMS_BSPOPTS_SET([USE_IRQ_GICV3],[*],[0])
+RTEMS_BSPOPTS_HELP([USE_IRQ_GICV3],[use the GICv3 interrupt controller driver])
+AM_CONDITIONAL(USE_IRQ_GICV3,test "$USE_IRQ_GICV3" = "1")
+
 RTEMS_BSPOPTS_SET([BSP_START_ZIMAGE_HEADER],[*],[1])
 RTEMS_BSPOPTS_HELP([BSP_START_ZIMAGE_HEADER],[include zImage boot header])
 

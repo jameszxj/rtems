@@ -36,6 +36,7 @@
 BSP_START_DATA_SECTION static const arm_cp15_start_section_config
 xen_bsp_mmu_config_table[] = {
   ARMV7_CP15_START_DEFAULT_SECTIONS,
+#if USE_IRQ_GICV2
   {
     .begin = BSP_ARM_GIC_DIST_BASE,
     .end = BSP_ARM_GIC_DIST_BASE + BSP_ARM_GIC_DIST_LENGTH,
@@ -44,7 +45,20 @@ xen_bsp_mmu_config_table[] = {
     .begin = BSP_ARM_GIC_CPUIF_BASE,
     .end = BSP_ARM_GIC_CPUIF_BASE + BSP_ARM_GIC_CPUIF_LENGTH,
     .flags = ARMV7_MMU_DEVICE
+  },
+#endif /* USE_IRQ_GICV2 */
+#if USE_IRQ_GICV3
+  {
+    .begin = BSP_ARM_GIC_DIST_BASE,
+    .end = BSP_ARM_GIC_DIST_BASE + BSP_ARM_GIC_DIST_LENGTH,
+    .flags = ARMV7_MMU_DEVICE
   }, {
+    .begin = BSP_ARM_GIC_REDIST_BASE,
+    .end = BSP_ARM_GIC_REDIST_BASE + BSP_ARM_GIC_REDIST_LENGTH,
+    .flags = ARMV7_MMU_DEVICE
+  },
+#endif /* USE_IRQ_GICV3 */
+  {
     .begin = BSP_XEN_VPL011_BASE,
     .end = BSP_XEN_VPL011_BASE + BSP_XEN_VPL011_LENGTH,
     .flags = ARMV7_MMU_DEVICE
