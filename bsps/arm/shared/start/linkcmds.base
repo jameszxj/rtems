@@ -295,11 +295,15 @@ SECTIONS {
 	} > REGION_DATA AT > REGION_DATA_LOAD
 	.data1 : ALIGN_WITH_INPUT {
 		*(.data1)
+		bsp_section_data1_end = .;
 	} > REGION_DATA AT > REGION_DATA_LOAD
 	.rtemsrwset : ALIGN_WITH_INPUT {
 		KEEP (*(SORT(.rtemsrwset.*)))
-		bsp_section_data_end = .;
+		bsp_section_rtemsrwset_end = .;
 	} > REGION_DATA AT > REGION_DATA_LOAD
+
+	bsp_section_data_end = (SIZEOF(.rtemsrwset) > 0) ? bsp_section_rtemsrwset_end : bsp_section_data1_end;
+
 	bsp_section_data_size = bsp_section_data_end - bsp_section_data_begin;
 	bsp_section_data_load_begin = LOADADDR (.data);
 	bsp_section_data_load_end = bsp_section_data_load_begin + bsp_section_data_size;
