@@ -852,6 +852,8 @@ librtemscpu_a_SOURCES += score/src/heapresizeblock.c
 librtemscpu_a_SOURCES += score/src/heapiterate.c
 librtemscpu_a_SOURCES += score/src/heapgreedy.c
 librtemscpu_a_SOURCES += score/src/heapnoextend.c
+librtemscpu_a_SOURCES += score/src/memoryallocate.c
+librtemscpu_a_SOURCES += score/src/memoryfill.c
 librtemscpu_a_SOURCES += score/src/objectallocate.c
 librtemscpu_a_SOURCES += score/src/objectclose.c
 librtemscpu_a_SOURCES += score/src/objectextendinformation.c
@@ -1050,6 +1052,7 @@ librtemscpu_a_SOURCES += sapi/src/rbheap.c
 librtemscpu_a_SOURCES += sapi/src/rbtree.c
 librtemscpu_a_SOURCES += sapi/src/rbtreefind.c
 librtemscpu_a_SOURCES += sapi/src/sapirbtreeinsert.c
+librtemscpu_a_SOURCES += sapi/src/sysinitverbose.c
 librtemscpu_a_SOURCES += sapi/src/tcsimpleinstall.c
 librtemscpu_a_SOURCES += sapi/src/version.c
 

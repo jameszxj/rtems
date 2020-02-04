@@ -1260,21 +1260,6 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
 
 #ifdef CONFIGURE_INIT
   /**
-   * By default, RTEMS uses separate heaps for the RTEMS Workspace and
-   * the C Program Heap.  The application can choose optionally to combine
-   * these to provide one larger memory pool. This is particularly
-   * useful in combination with the unlimited objects configuration.
-   */
-  #ifdef CONFIGURE_UNIFIED_WORK_AREAS
-    Heap_Control  *RTEMS_Malloc_Heap = &_Workspace_Area;
-  #else
-    Heap_Control   RTEMS_Malloc_Area;
-    Heap_Control  *RTEMS_Malloc_Heap = &RTEMS_Malloc_Area;
-  #endif
-#endif
-
-#ifdef CONFIGURE_INIT
-  /**
    * This configures the sbrk() support for the malloc family.
    * By default it is assumed that the BSP provides all available
    * RAM to the malloc family implementation so sbrk()'ing to get
@@ -2858,6 +2843,14 @@ struct _reent *__getreent(void)
       _Record_Initialize,
       RTEMS_SYSINIT_RECORD,
       RTEMS_SYSINIT_ORDER_MIDDLE
+    );
+  #endif
+
+  #ifdef CONFIGURE_VERBOSE_SYSTEM_INITIALIZATION
+    RTEMS_SYSINIT_ITEM(
+      _Sysinit_Verbose,
+      RTEMS_SYSINIT_RECORD,
+      RTEMS_SYSINIT_ORDER_LAST
     );
   #endif
 #endif

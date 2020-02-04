@@ -27,7 +27,14 @@ extern "C" {
  * order values to form a proper integer literal.
  */
 #define RTEMS_SYSINIT_RECORD                     000100
-#define RTEMS_SYSINIT_BSP_WORK_AREAS             000200
+#define RTEMS_SYSINIT_BSP_EARLY                  000140
+#define RTEMS_SYSINIT_MEMORY                     000180
+#define RTEMS_SYSINIT_DIRTY_MEMORY               0001c0
+#define RTEMS_SYSINIT_ISR_STACK                  000200
+#define RTEMS_SYSINIT_PER_CPU_DATA               000220
+#define RTEMS_SYSINIT_SBRK                       000240
+#define RTEMS_SYSINIT_WORKSPACE                  000260
+#define RTEMS_SYSINIT_MALLOC                     000280
 #define RTEMS_SYSINIT_BSP_START                  000300
 #define RTEMS_SYSINIT_CPU_COUNTER                000400
 #define RTEMS_SYSINIT_INITIAL_EXTENSIONS         000500
@@ -80,18 +87,27 @@ extern "C" {
  * digits without a 0x-prefix.  A 0x-prefix is concatenated with the module and
  * order values to form a proper integer literal.
  */
-#define RTEMS_SYSINIT_ORDER_FIRST   00
-#define RTEMS_SYSINIT_ORDER_SECOND  01
-#define RTEMS_SYSINIT_ORDER_THIRD   02
-#define RTEMS_SYSINIT_ORDER_FOURTH  03
-#define RTEMS_SYSINIT_ORDER_FIFTH   04
-#define RTEMS_SYSINIT_ORDER_SIXTH   05
-#define RTEMS_SYSINIT_ORDER_SEVENTH 06
-#define RTEMS_SYSINIT_ORDER_EIGHTH  07
-#define RTEMS_SYSINIT_ORDER_NINETH  08
-#define RTEMS_SYSINIT_ORDER_TENTH   09
-#define RTEMS_SYSINIT_ORDER_MIDDLE  80
-#define RTEMS_SYSINIT_ORDER_LAST    ff
+#define RTEMS_SYSINIT_ORDER_FIRST      00
+#define RTEMS_SYSINIT_ORDER_SECOND     01
+#define RTEMS_SYSINIT_ORDER_THIRD      02
+#define RTEMS_SYSINIT_ORDER_FOURTH     03
+#define RTEMS_SYSINIT_ORDER_FIFTH      04
+#define RTEMS_SYSINIT_ORDER_SIXTH      05
+#define RTEMS_SYSINIT_ORDER_SEVENTH    06
+#define RTEMS_SYSINIT_ORDER_EIGHTH     07
+#define RTEMS_SYSINIT_ORDER_NINETH     08
+#define RTEMS_SYSINIT_ORDER_TENTH      09
+#define RTEMS_SYSINIT_ORDER_MIDDLE     80
+#define RTEMS_SYSINIT_ORDER_LAST_BUT_9 f6
+#define RTEMS_SYSINIT_ORDER_LAST_BUT_8 f7
+#define RTEMS_SYSINIT_ORDER_LAST_BUT_7 f8
+#define RTEMS_SYSINIT_ORDER_LAST_BUT_6 f9
+#define RTEMS_SYSINIT_ORDER_LAST_BUT_5 fa
+#define RTEMS_SYSINIT_ORDER_LAST_BUT_4 fb
+#define RTEMS_SYSINIT_ORDER_LAST_BUT_3 fc
+#define RTEMS_SYSINIT_ORDER_LAST_BUT_2 fd
+#define RTEMS_SYSINIT_ORDER_LAST_BUT_1 fe
+#define RTEMS_SYSINIT_ORDER_LAST       ff
 
 typedef void ( *rtems_sysinit_handler )( void );
 
@@ -116,6 +132,12 @@ typedef struct {
 /* Perform parameter expansion */
 #define RTEMS_SYSINIT_ITEM( handler, module, order ) \
   _RTEMS_SYSINIT_ITEM( handler, module, order )
+
+/**
+ * @brief System initialization handler to enable a verbose system
+ * initialization.
+ */
+void _Sysinit_Verbose( void );
 
 #ifdef __cplusplus
 }
