@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (C) 2013, 2017 embedded brains GmbH
+ * Copyright (C) 2018, 2019 embedded brains GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,54 +25,43 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <rtems/bspIo.h>
-#include <rtems/sysinit.h>
+#if HAVE_CONFIG_H
+#include "config.h"
+#endif
 
-#include <bsp.h>
-#include <bsp/zynq-uart.h>
+#include <rtems/score/memory.h>
 
-#include <bspopts.h>
-
-static void zynq_debug_console_out(char c)
+void *_Memory_Allocate(
+  const Memory_Information *information,
+  uintptr_t                 size,
+  uintptr_t                 alignment
+)
 {
-  rtems_termios_device_context *base =
-    &zynq_uart_instances[BSP_CONSOLE_MINOR].base;
+  Memory_Area       *area;
+  const Memory_Area *end;
+  uintptr_t          alignment_mask;
 
-  zynq_uart_write_polled(base, c);
+  area = &information->areas[ 0 ];
+  end = &information->areas[ information->count ];
+  alignment_mask = alignment - 1;
+
+  while ( area != end ) {
+    uintptr_t alloc_begin;
+    uintptr_t alloc_end;
+
+    alloc_begin = (uintptr_t) area->free;
+    alloc_begin += alignment_mask;
+    alloc_begin &= ~alignment_mask;
+    alloc_end = alloc_begin + size;
+
+    if ( alloc_begin <= alloc_end && alloc_end <= (uintptr_t) area->end ) {
+      area->free = (void *) alloc_end;
+
+      return (void *) alloc_begin;
+    }
+
+    ++area;
+  }
+
+  return NULL;
 }
-
-static void zynq_debug_console_init(void)
-{
-  rtems_termios_device_context *base =
-    &zynq_uart_instances[BSP_CONSOLE_MINOR].base;
-
-  zynq_uart_initialize(base);
-  BSP_output_char = zynq_debug_console_out;
-}
-
-static void zynq_debug_console_early_init(char c)
-{
-  rtems_termios_device_context *base =
-    &zynq_uart_instances[BSP_CONSOLE_MINOR].base;
-
-  zynq_uart_initialize(base);
-  zynq_debug_console_out(c);
-}
-
-static int zynq_debug_console_in(void)
-{
-  rtems_termios_device_context *base =
-    &zynq_uart_instances[BSP_CONSOLE_MINOR].base;
-
-  return zynq_uart_read_polled(base);
-}
-
-BSP_output_char_function_type BSP_output_char = zynq_debug_console_early_init;
-
-BSP_polling_getchar_function_type BSP_poll_char = zynq_debug_console_in;
-
-RTEMS_SYSINIT_ITEM(
-  zynq_debug_console_init,
-  RTEMS_SYSINIT_BSP_START,
-  RTEMS_SYSINIT_ORDER_LAST_BUT_5
-);

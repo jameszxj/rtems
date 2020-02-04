@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018 embedded brains GmbH.  All rights reserved.
+ * Copyright (c) 2015, 2020 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
  *  Dornierstr. 4
@@ -71,8 +71,8 @@
 const char rtems_test_name[] = "SPSYSINIT 1";
 
 typedef enum {
-  BSP_WORK_AREAS_PRE,
-  BSP_WORK_AREAS_POST,
+  WORKSPACE_PRE,
+  WORKSPACE_POST,
   BSP_START_PRE,
   BSP_START_POST,
   CPU_COUNTER_PRE,
@@ -148,6 +148,15 @@ typedef enum {
   LAST_NINETH,
   LAST_TENTH,
   LAST_MIDDLE,
+  LAST_LAST_BUT_9,
+  LAST_LAST_BUT_8,
+  LAST_LAST_BUT_7,
+  LAST_LAST_BUT_6,
+  LAST_LAST_BUT_5,
+  LAST_LAST_BUT_4,
+  LAST_LAST_BUT_3,
+  LAST_LAST_BUT_2,
+  LAST_LAST_BUT_1,
   LAST_LAST,
   INIT_TASK,
   DONE
@@ -167,7 +176,7 @@ typedef enum {
   RTEMS_SYSINIT_ITEM( \
     x##_last, \
     x, \
-    RTEMS_SYSINIT_ORDER_LAST \
+    RTEMS_SYSINIT_ORDER_LAST_BUT_1 \
   ); \
   static void x##_last(void)
 
@@ -200,16 +209,16 @@ static bool info_is_init(const Objects_Information *info, size_t count)
   return _Chain_Node_count_unprotected(&info->Inactive) == count;
 }
 
-FIRST(RTEMS_SYSINIT_BSP_WORK_AREAS)
+FIRST(RTEMS_SYSINIT_WORKSPACE)
 {
   assert(_Workspace_Area.area_begin == 0);
-  next_step(BSP_WORK_AREAS_PRE);
+  next_step(WORKSPACE_PRE);
 }
 
-LAST(RTEMS_SYSINIT_BSP_WORK_AREAS)
+LAST(RTEMS_SYSINIT_WORKSPACE)
 {
   assert(_Workspace_Area.area_begin != 0);
-  next_step(BSP_WORK_AREAS_POST);
+  next_step(WORKSPACE_POST);
 }
 
 FIRST(RTEMS_SYSINIT_BSP_START)
@@ -641,6 +650,15 @@ LAST_STEP(EIGHTH);
 LAST_STEP(NINETH);
 LAST_STEP(TENTH);
 LAST_STEP(MIDDLE);
+LAST_STEP(LAST_BUT_9);
+LAST_STEP(LAST_BUT_8);
+LAST_STEP(LAST_BUT_7);
+LAST_STEP(LAST_BUT_6);
+LAST_STEP(LAST_BUT_5);
+LAST_STEP(LAST_BUT_4);
+LAST_STEP(LAST_BUT_3);
+LAST_STEP(LAST_BUT_2);
+LAST_STEP(LAST_BUT_1);
 LAST_STEP(LAST);
 
 static void do_barrier_create(void)
@@ -962,6 +980,8 @@ static void *POSIX_Init(void *arg)
 #define CONFIGURE_RTEMS_INIT_TASKS_TABLE
 
 #define CONFIGURE_STACK_CHECKER_ENABLED
+
+#define CONFIGURE_VERBOSE_SYSTEM_INITIALIZATION
 
 #define CONFIGURE_INITIAL_EXTENSIONS RTEMS_TEST_INITIAL_EXTENSION
 
