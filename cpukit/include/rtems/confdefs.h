@@ -59,7 +59,6 @@
   #undef BSP_INITIAL_EXTENSION
   #undef BSP_INTERRUPT_STACK_SIZE
   #undef BSP_MAXIMUM_DEVICES
-  #undef BSP_ZERO_WORKSPACE_AUTOMATICALLY
   #undef CONFIGURE_BSP_PREREQUISITE_DRIVERS
   #undef CONFIGURE_MALLOC_BSP_SUPPORTS_SBRK
 #else
@@ -1234,20 +1233,6 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
  * @addtogroup Configuration
  */
 /**@{*/
-
-/**
- * Should the RTEMS Workspace and C Program Heap be cleared automatically
- * at system start up?
- */
-#ifndef CONFIGURE_ZERO_WORKSPACE_AUTOMATICALLY
-  #ifdef BSP_ZERO_WORKSPACE_AUTOMATICALLY
-    #define CONFIGURE_ZERO_WORKSPACE_AUTOMATICALLY \
-            BSP_ZERO_WORKSPACE_AUTOMATICALLY
-  #else
-    #define CONFIGURE_ZERO_WORKSPACE_AUTOMATICALLY FALSE
-  #endif
-#endif
-/**@}*/ /* end of add to group Configuration */
 
 /**
  * @defgroup ConfigurationMalloc RTEMS Malloc configuration
@@ -2793,7 +2778,6 @@ struct _reent *__getreent(void)
     CONFIGURE_TASK_STACK_ALLOCATOR_INIT,      /* stack allocator init */
     CONFIGURE_TASK_STACK_ALLOCATOR,           /* stack allocator */
     CONFIGURE_TASK_STACK_DEALLOCATOR,         /* stack deallocator */
-    CONFIGURE_ZERO_WORKSPACE_AUTOMATICALLY,   /* true to clear memory */
     #ifdef CONFIGURE_UNIFIED_WORK_AREAS       /* true for unified work areas */
       true,
     #else
@@ -2817,6 +2801,16 @@ struct _reent *__getreent(void)
       _CONFIGURE_MAXIMUM_PROCESSORS,
     #endif
   };
+
+  #ifdef CONFIGURE_ZERO_WORKSPACE_AUTOMATICALLY
+    const bool _Memory_Zero_before_use = true;
+
+    RTEMS_SYSINIT_ITEM(
+      _Memory_Zero_free_areas,
+      RTEMS_SYSINIT_ZERO_MEMORY,
+      RTEMS_SYSINIT_ORDER_MIDDLE
+    );
+  #endif
 
   #if CONFIGURE_RECORD_PER_PROCESSOR_ITEMS > 0
     #if (CONFIGURE_RECORD_PER_PROCESSOR_ITEMS & (CONFIGURE_RECORD_PER_PROCESSOR_ITEMS - 1)) != 0
