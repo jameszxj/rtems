@@ -50,6 +50,8 @@ static void *Init( uintptr_t ignored )
   );
   fatal_directive_status( status, RTEMS_INVALID_NAME, "rtems_task_ident" );
 
+  rtems_test_assert( rtems_configuration_get_do_zero_of_workspace() );
+
   TEST_END();
   rtems_test_exit(0);
 }
@@ -81,11 +83,12 @@ rtems_initialization_tasks_table Initialization_tasks[1] =
 #define CONFIGURE_INIT_TASK_TABLE_SIZE 0
 #define CONFIGURE_INIT_TASK_STACK_SIZE 0
 
+#define CONFIGURE_DIRTY_MEMORY
+
 /*
- *  Ensure we test the case where memory is zero.  Not
- *  all BSPs will set this to TRUE by default.
+ *  Ensure we test the case where memory is zero.
  */
-#define CONFIGURE_ZERO_WORKSPACE_AUTOMATICALLY TRUE
+#define CONFIGURE_ZERO_WORKSPACE_AUTOMATICALLY
 
 #define CONFIGURE_INIT
 #include <rtems/confdefs.h>
