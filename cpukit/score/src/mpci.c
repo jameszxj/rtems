@@ -29,6 +29,8 @@
 #include <rtems/score/threadqimpl.h>
 #include <rtems/sysinit.h>
 
+#include <string.h>
+
 RTEMS_STATIC_ASSERT(
   sizeof(MPCI_Internal_packet) <= MP_PACKET_MINIMUM_PACKET_SIZE,
   MPCI_Internal_packet
@@ -111,8 +113,9 @@ static void _MPCI_Create_server( void )
       }
     }
   };
-  ISR_lock_Context lock_context;
-  Objects_Name     name;
+  Thread_Configuration config;
+  bool                 ok;
+  ISR_lock_Context     lock_context;
 
 
   if ( !_System_state_Is_multiprocessing )
@@ -123,24 +126,27 @@ static void _MPCI_Create_server( void )
    */
 
   _MPCI_Receive_server_tcb = _Thread_Internal_allocate();
+  _Assert( _MPCI_Receive_server_tcb != NULL );
 
-  name.name_u32 = _Objects_Build_name( 'M', 'P', 'C', 'I' );
-  _Thread_Initialize(
+  memset( &config, 0, sizeof( config ) );
+  config.scheduler = &_Scheduler_Table[ 0 ];
+  config.name.name_u32 = _Objects_Build_name( 'M', 'P', 'C', 'I' );
+  config.priority = PRIORITY_PSEUDO_ISR;
+  config.budget_algorithm = THREAD_CPU_BUDGET_ALGORITHM_NONE;
+  config.is_fp = CPU_ALL_TASKS_ARE_FP;
+  config.stack_size = _Stack_Minimum()
+    + _MPCI_Configuration.extra_mpci_receive_server_stack
+    + CPU_MPCI_RECEIVE_SERVER_EXTRA_STACK
+    + CPU_ALL_TASKS_ARE_FP * CONTEXT_FP_SIZE;
+  config.stack_area = _MPCI_Receive_server_stack;
+
+  ok = _Thread_Initialize(
     &_Thread_Information,
     _MPCI_Receive_server_tcb,
-    &_Scheduler_Table[ 0 ],
-    NULL,        /* allocate the stack */
-    _Stack_Minimum() +
-      CPU_MPCI_RECEIVE_SERVER_EXTRA_STACK +
-      _MPCI_Configuration.extra_mpci_receive_server_stack,
-    CPU_ALL_TASKS_ARE_FP,
-    PRIORITY_PSEUDO_ISR,
-    false,       /* no preempt */
-    THREAD_CPU_BUDGET_ALGORITHM_NONE,
-    NULL,        /* no budget algorithm callout */
-    0,           /* all interrupts enabled */
-    name
+    &config
   );
+  _Assert( ok );
+  (void) ok;
 
   _ISR_lock_ISR_disable( &lock_context );
   _Thread_Start( _MPCI_Receive_server_tcb, &entry, &lock_context );

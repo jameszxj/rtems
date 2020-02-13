@@ -39,6 +39,8 @@
 #include <rtems/score/userextimpl.h>
 #include <rtems/sysinit.h>
 
+#include <string.h>
+
 static inline size_t _POSIX_Threads_Ensure_minimum_stack (
   size_t size
 )
@@ -68,18 +70,12 @@ int pthread_create(
   const pthread_attr_t               *the_attr;
   int                                 normal_prio;
   bool                                valid;
-  Priority_Control                    core_normal_prio;
-  Thread_CPU_budget_algorithms        budget_algorithm;
-  Thread_CPU_budget_algorithm_callout budget_callout;
-  bool                                is_fp;
+  Thread_Configuration                config;
   bool                                status;
   Thread_Control                     *the_thread;
   Thread_Control                     *executing;
-  const Scheduler_Control            *scheduler;
   int                                 schedpolicy = SCHED_RR;
   struct sched_param                  schedparam;
-  size_t                              stacksize;
-  Objects_Name                        name;
   int                                 error;
   ISR_lock_Context                    lock_context;
 #if defined(RTEMS_POSIX_API)
@@ -96,6 +92,16 @@ int pthread_create(
   if ( !the_attr->is_initialized )
     return EINVAL;
 
+  memset( &config, 0, sizeof( config ) );
+
+  /*
+   *  Currently all POSIX threads are floating point if the hardware
+   *  supports it.
+   */
+  config.is_fp = true;
+
+  config.is_preemptible = true;
+
   /*
    *  Core Thread Initialize ensures we get the minimum amount of
    *  stack space if it is allowed to allocate it itself.
@@ -104,13 +110,17 @@ int pthread_create(
    *        twice the minimum.
    */
   if ( the_attr->stackaddr != NULL ) {
-    if ( !_Stack_Is_enough(the_attr->stacksize) ) {
+    if ( !_Stack_Is_enough( the_attr->stacksize, config.is_fp ) ) {
       return EINVAL;
     }
 
-    stacksize = the_attr->stacksize;
+    config.stack_area = the_attr->stackaddr;
+    config.stack_size = the_attr->stacksize;
   } else {
-    stacksize = _POSIX_Threads_Ensure_minimum_stack( the_attr->stacksize );
+    config.stack_size = _POSIX_Threads_Ensure_minimum_stack(
+      the_attr->stacksize
+    );
+    config.stack_size = _Stack_Extend_size( config.stack_size, config.is_fp );
   }
 
   #if 0
@@ -158,8 +168,8 @@ int pthread_create(
   error = _POSIX_Thread_Translate_sched_param(
     schedpolicy,
     &schedparam,
-    &budget_algorithm,
-    &budget_callout
+    &config.budget_algorithm,
+    &config.budget_callout
   );
   if ( error != 0 ) {
     return error;
@@ -167,9 +177,13 @@ int pthread_create(
 
   normal_prio = schedparam.sched_priority;
 
-  scheduler = _Thread_Scheduler_get_home( executing );
+  config.scheduler = _Thread_Scheduler_get_home( executing );
 
-  core_normal_prio = _POSIX_Priority_To_core( scheduler, normal_prio, &valid );
+  config.priority = _POSIX_Priority_To_core(
+    config.scheduler,
+    normal_prio,
+    &valid
+  );
   if ( !valid ) {
     return EINVAL;
   }
@@ -181,7 +195,7 @@ int pthread_create(
     low_prio = normal_prio;
   }
 
-  core_low_prio = _POSIX_Priority_To_core( scheduler, low_prio, &valid );
+  core_low_prio = _POSIX_Priority_To_core( config.scheduler, low_prio, &valid );
   if ( !valid ) {
     return EINVAL;
   }
@@ -190,12 +204,6 @@ int pthread_create(
   if ( the_attr->affinityset == NULL ) {
     return EINVAL;
   }
-
-  /*
-   *  Currently all POSIX threads are floating point if the hardware
-   *  supports it.
-   */
-  is_fp = true;
 
   /*
    *  Allocate the thread control block.
@@ -208,24 +216,23 @@ int pthread_create(
     return EAGAIN;
   }
 
+  if ( config.stack_area == NULL ) {
+    config.stack_area = _Stack_Allocate( config.stack_size );
+    config.allocated_stack = config.stack_area;
+  }
+
+  status = ( config.stack_area != NULL );
+
   /*
    *  Initialize the core thread for this task.
    */
-  name.name_p = NULL;   /* posix threads don't have a name by default */
-  status = _Thread_Initialize(
-    &_POSIX_Threads_Information,
-    the_thread,
-    scheduler,
-    the_attr->stackaddr,
-    stacksize,
-    is_fp,
-    core_normal_prio,
-    true,                 /* preemptible */
-    budget_algorithm,
-    budget_callout,
-    0,                    /* isr level */
-    name                  /* posix threads don't have a name */
-  );
+  if ( status ) {
+    status = _Thread_Initialize(
+      &_POSIX_Threads_Information,
+      the_thread,
+      &config
+    );
+  }
   if ( !status ) {
     _POSIX_Threads_Free( the_thread );
     _Objects_Allocator_unlock();

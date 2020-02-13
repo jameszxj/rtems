@@ -1,16 +1,7 @@
-/**
- * @file
- *
- * @ingroup RTEMSBSPsARMxen
- *
- * @brief Global BSP definitions.
- */
-
 /*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (C) 2019 DornerWorks
- * Written by Jeff Kubascik <jeff.kubascik@dornerworks.com>
+ * Copyright (C) 2013, 2017 embedded brains GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,63 +25,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LIBBSP_ARM_XEN_BSP_H
-#define LIBBSP_ARM_XEN_BSP_H
+#include <rtems/console.h>
 
-/**
- * @addtogroup RTEMSBSPsARM
- *
- * @{
- */
+#include <bsp.h>
+#include <bsp/zynq-uart.h>
 
-#include <bspopts.h>
+rtems_status_code console_initialize(
+  rtems_device_major_number major,
+  rtems_device_minor_number minor,
+  void *arg
+)
+{
+  size_t i;
 
-#define BSP_FEATURE_IRQ_EXTENSION
+  rtems_termios_initialize();
 
-#ifndef ASM
+  for (i = 0; i < RTEMS_ARRAY_SIZE(zynq_uart_instances); ++i) {
+    char uart[] = "/dev/ttySX";
 
-#include <bsp/default-initial-extension.h>
-#include <bsp/start.h>
+    uart[sizeof(uart) - 2] = (char) ('0' + i);
+    rtems_termios_device_install(
+      &uart[0],
+      &zynq_uart_handler,
+      NULL,
+      &zynq_uart_instances[i].base
+    );
 
-#include <rtems.h>
+    if (i == BSP_CONSOLE_MINOR) {
+      link(&uart[0], CONSOLE_DEVICE_NAME);
+    }
+  }
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
-#if USE_IRQ_GICV2
-#define BSP_ARM_GIC_CPUIF_BASE 0x03002000
-#define BSP_ARM_GIC_CPUIF_LENGTH 0x1000
-
-#define BSP_ARM_GIC_DIST_BASE 0x03001000
-#define BSP_ARM_GIC_DIST_LENGTH 0x1000
-#endif /* USE_IRQ_GICV2 */
-
-#if USE_IRQ_GICV3
-#define BSP_ARM_GIC_DIST_BASE 0x03001000
-#define BSP_ARM_GIC_DIST_LENGTH 0x10000
-
-#define BSP_ARM_GIC_REDIST_BASE 0x03020000
-#define BSP_ARM_GIC_REDIST_LENGTH 0x1000000
-#endif /* USE_IRQ_GICV3 */
-
-#define BSP_ARM_A9MPCORE_SCU_BASE 0
-
-#define BSP_ARM_A9MPCORE_GT_BASE 0
-
-#define BSP_XEN_VPL011_BASE 0x22000000
-#define BSP_XEN_VPL011_LENGTH 0x1000
-
-void arm_generic_timer_get_config(uint32_t *frequency, uint32_t *irq);
-
-BSP_START_TEXT_SECTION void bsp_xen_setup_mmu_and_cache(void);
-
-#ifdef __cplusplus
+  return RTEMS_SUCCESSFUL;
 }
-#endif /* __cplusplus */
-
-#endif /* ASM */
-
-/** @} */
-
-#endif /* LIBBSP_ARM_XEN_BSP_H */

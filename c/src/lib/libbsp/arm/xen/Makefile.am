@@ -34,7 +34,12 @@ librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/shared/clock/clock-generic-t
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/shared/cache/cache-cp15.c
 # irq
 librtemsbsp_a_SOURCES += ../../../../../../bsps/shared/irq/irq-default-handler.c
+if USE_IRQ_GICV2
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/shared/irq/irq-gic.c
+endif
+if USE_IRQ_GICV3
+librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/shared/irq/irq-gicv3.c
+endif
 # console
 librtemsbsp_a_SOURCES += ../../../../../../bsps/arm/xen/console/console.c
 librtemsbsp_a_SOURCES += ../../../../../../bsps/shared/dev/serial/console-termios.c

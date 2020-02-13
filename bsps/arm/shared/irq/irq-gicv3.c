@@ -107,6 +107,12 @@
 #define WRITE64_SR(SR_NAME, VALUE) \
     __asm__ volatile("mcrr    " SR_NAME "  \n" : : "r" (VALUE) );
 
+#define WRITE64_REG(ADDR, VALUE) \
+({ \
+  __asm__ volatile("str %0, [%1, #0]"::"r"(VALUE), "r"(ADDR)); \
+  __asm__ volatile("str %0, [%1, #4]"::"r"(VALUE >> 32), "r"(ADDR)); \
+})
+
 #define ARM_GIC_REDIST ((volatile gic_redist *) BSP_ARM_GIC_REDIST_BASE)
 #define ARM_GIC_SGI_PPI (((volatile gic_sgi_ppi *) ((char*)BSP_ARM_GIC_REDIST_BASE + (1 << 16))))
 
@@ -166,6 +172,16 @@ static inline uint32_t get_id_count(volatile gic_dist *dist)
   return id_count;
 }
 
+static uint64_t cpu_to_affinity(uint32_t cpu)
+{
+  /* CPU logical mapping is not present - keep it simple with a single level
+     routing hierarchy */
+  return (GIC_DIST_ICDIRR_AFF3(0) |
+          GIC_DIST_ICDIRR_AFF2(0) |
+          GIC_DIST_ICDIRR_AFF1(0) |
+          GIC_DIST_ICDIRR_AFF0(cpu));
+}
+
 static void init_cpu_interface(void)
 {
   uint32_t sre_value = 0x7;
@@ -222,7 +238,7 @@ rtems_status_code bsp_interrupt_facility_initialize(void)
   }
 
   for (id = 32; id < id_count; ++id) {
-    gic_id_set_targets(dist, id, 0x01);
+    WRITE64_REG(&dist->icdirr[id-32], cpu_to_affinity(0));
   }
 
   init_cpu_interface();
@@ -293,9 +309,13 @@ void bsp_interrupt_set_affinity(
 )
 {
   volatile gic_dist *dist = ARM_GIC_DIST;
-  uint8_t targets = (uint8_t) _Processor_mask_To_uint32_t(affinity, 0);
+  uint32_t cpu = _Processor_mask_Find_last_set(affinity);
 
-  gic_id_set_targets(dist, vector, targets);
+  if (vector < 32) {
+    /* Affinity doesn't apply to SGIs/PPIs */
+  } else {
+    WRITE64_REG(&dist->icdirr[vector-32], cpu_to_affinity(cpu));
+  }
 }
 
 void bsp_interrupt_get_affinity(

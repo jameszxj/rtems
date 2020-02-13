@@ -1,16 +1,7 @@
-/**
- * @file
- *
- * @ingroup RTEMSBSPsARMxen
- *
- * @brief Global BSP definitions.
- */
-
 /*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (C) 2019 DornerWorks
- * Written by Jeff Kubascik <jeff.kubascik@dornerworks.com>
+ * Copyright (C) 2014, 2019 embedded brains GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,63 +25,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LIBBSP_ARM_XEN_BSP_H
-#define LIBBSP_ARM_XEN_BSP_H
+#if HAVE_CONFIG_H
+#include "config.h"
+#endif
 
-/**
- * @addtogroup RTEMSBSPsARM
- *
- * @{
- */
+#include <rtems/score/tls.h>
 
-#include <bspopts.h>
+static uintptr_t _TLS_Allocation_size;
 
-#define BSP_FEATURE_IRQ_EXTENSION
+uintptr_t _TLS_Get_allocation_size( void )
+{
+  uintptr_t size;
+  uintptr_t allocation_size;
+  uintptr_t alignment;
 
-#ifndef ASM
+  size = _TLS_Get_size();
 
-#include <bsp/default-initial-extension.h>
-#include <bsp/start.h>
+  if ( size == 0 ) {
+    return 0;
+  }
 
-#include <rtems.h>
+  allocation_size = _TLS_Allocation_size;
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+  if ( allocation_size == 0 ) {
+    allocation_size = _TLS_Heap_align_up( size );
+    alignment = _TLS_Heap_align_up( (uintptr_t) _TLS_Alignment );
 
-#if USE_IRQ_GICV2
-#define BSP_ARM_GIC_CPUIF_BASE 0x03002000
-#define BSP_ARM_GIC_CPUIF_LENGTH 0x1000
+    /*
+     * The stack allocator does not support aligned allocations.  Allocate
+     * enough to do the alignment manually.
+     */
+    if ( alignment > CPU_HEAP_ALIGNMENT ) {
+      allocation_size += alignment;
+    }
 
-#define BSP_ARM_GIC_DIST_BASE 0x03001000
-#define BSP_ARM_GIC_DIST_LENGTH 0x1000
-#endif /* USE_IRQ_GICV2 */
+    allocation_size += _TLS_Get_thread_control_block_area_size( alignment );
 
-#if USE_IRQ_GICV3
-#define BSP_ARM_GIC_DIST_BASE 0x03001000
-#define BSP_ARM_GIC_DIST_LENGTH 0x10000
+#ifndef __i386__
+    allocation_size += sizeof(TLS_Dynamic_thread_vector);
+#endif
 
-#define BSP_ARM_GIC_REDIST_BASE 0x03020000
-#define BSP_ARM_GIC_REDIST_LENGTH 0x1000000
-#endif /* USE_IRQ_GICV3 */
+    _TLS_Allocation_size = allocation_size;
+  }
 
-#define BSP_ARM_A9MPCORE_SCU_BASE 0
-
-#define BSP_ARM_A9MPCORE_GT_BASE 0
-
-#define BSP_XEN_VPL011_BASE 0x22000000
-#define BSP_XEN_VPL011_LENGTH 0x1000
-
-void arm_generic_timer_get_config(uint32_t *frequency, uint32_t *irq);
-
-BSP_START_TEXT_SECTION void bsp_xen_setup_mmu_and_cache(void);
-
-#ifdef __cplusplus
+  return allocation_size;
 }
-#endif /* __cplusplus */
-
-#endif /* ASM */
-
-/** @} */
-
-#endif /* LIBBSP_ARM_XEN_BSP_H */

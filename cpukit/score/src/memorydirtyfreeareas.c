@@ -1,16 +1,7 @@
-/**
- * @file
- *
- * @ingroup RTEMSBSPsARMxen
- *
- * @brief Global BSP definitions.
- */
-
 /*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (C) 2019 DornerWorks
- * Written by Jeff Kubascik <jeff.kubascik@dornerworks.com>
+ * Copyright (C) 2020 embedded brains GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,63 +25,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LIBBSP_ARM_XEN_BSP_H
-#define LIBBSP_ARM_XEN_BSP_H
+#if HAVE_CONFIG_H
+#include "config.h"
+#endif
 
-/**
- * @addtogroup RTEMSBSPsARM
- *
- * @{
- */
+#include <rtems/score/memory.h>
 
-#include <bspopts.h>
-
-#define BSP_FEATURE_IRQ_EXTENSION
-
-#ifndef ASM
-
-#include <bsp/default-initial-extension.h>
-#include <bsp/start.h>
-
-#include <rtems.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
-#if USE_IRQ_GICV2
-#define BSP_ARM_GIC_CPUIF_BASE 0x03002000
-#define BSP_ARM_GIC_CPUIF_LENGTH 0x1000
-
-#define BSP_ARM_GIC_DIST_BASE 0x03001000
-#define BSP_ARM_GIC_DIST_LENGTH 0x1000
-#endif /* USE_IRQ_GICV2 */
-
-#if USE_IRQ_GICV3
-#define BSP_ARM_GIC_DIST_BASE 0x03001000
-#define BSP_ARM_GIC_DIST_LENGTH 0x10000
-
-#define BSP_ARM_GIC_REDIST_BASE 0x03020000
-#define BSP_ARM_GIC_REDIST_LENGTH 0x1000000
-#endif /* USE_IRQ_GICV3 */
-
-#define BSP_ARM_A9MPCORE_SCU_BASE 0
-
-#define BSP_ARM_A9MPCORE_GT_BASE 0
-
-#define BSP_XEN_VPL011_BASE 0x22000000
-#define BSP_XEN_VPL011_LENGTH 0x1000
-
-void arm_generic_timer_get_config(uint32_t *frequency, uint32_t *irq);
-
-BSP_START_TEXT_SECTION void bsp_xen_setup_mmu_and_cache(void);
-
-#ifdef __cplusplus
+void _Memory_Dirty_free_areas( void )
+{
+  _Memory_Fill( _Memory_Get(), 0xcf );
 }
-#endif /* __cplusplus */
-
-#endif /* ASM */
-
-/** @} */
-
-#endif /* LIBBSP_ARM_XEN_BSP_H */

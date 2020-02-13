@@ -80,6 +80,48 @@ RTEMS_INLINE_ROUTINE void _Freechain_Initialize(
 }
 
 /**
+ * @brief Return true if the freechain is empty, otherwise false
+ *
+ * @param freechain The freechain control.
+ */
+RTEMS_INLINE_ROUTINE bool _Freechain_Is_empty(
+  const Freechain_Control *freechain
+)
+{
+  return _Chain_Is_empty( &freechain->Free );
+}
+
+/**
+ * @brief Pop an item from the freechain.
+ *
+ * The freechain must not be empty.
+ *
+ * @param freechain The freechain control.
+ */
+RTEMS_INLINE_ROUTINE void *_Freechain_Pop( Freechain_Control *freechain )
+{
+  return _Chain_Get_first_unprotected( &freechain->Free );
+}
+
+/**
+ * @brief Extend the freechain with new nodes.
+ *
+ * @param freechain The freechain control.
+ * @param allocator The allocator function.
+ * @param number_nodes_to_extend The number of nodes to extend.
+ * @param node_size The node size.
+ *
+ * @retval NULL The extend operation failed.
+ * @retval nodes Pointer to the new nodes.
+ */
+void *_Freechain_Extend(
+  Freechain_Control   *freechain,
+  Freechain_Allocator  allocator,
+  size_t               number_nodes_to_extend,
+  size_t               node_size
+);
+
+/**
  * @brief Gets a node from the freechain.
  *
  * @param[in, out] freechain The freechain control.

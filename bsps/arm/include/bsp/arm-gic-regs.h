@@ -151,6 +151,21 @@ typedef struct {
 #define GIC_DIST_ICDSGIR_SGIINTID(val) BSP_FLD32(val, 0, 3)
 #define GIC_DIST_ICDSGIR_SGIINTID_GET(reg) BSP_FLD32GET(reg, 0, 3)
 #define GIC_DIST_ICDSGIR_SGIINTID_SET(reg, val) BSP_FLD32SET(reg, val, 0, 3)
+  uint32_t reserved_f04[5247];
+  uint64_t icdirr[988];
+#define GIC_DIST_ICDIRR_AFF3(val) BSP_FLD64(val, 32, 39)
+#define GIC_DIST_ICDIRR_AFF3_GET(reg) BSP_FLD64GET(val, 32, 39)
+#define GIC_DIST_ICDIRR_AFF3_SET(reg, val) BSP_FLD64SET(reg, val, 32, 39)
+#define GIC_DIST_ICDIRR_INTERRUPT_ROUTING_MODE BSP_BIT64(31)
+#define GIC_DIST_ICDIRR_AFF2(val) BSP_FLD64(val, 16, 23)
+#define GIC_DIST_ICDIRR_AFF2_GET(reg) BSP_FLD64GET(val, 16, 23)
+#define GIC_DIST_ICDIRR_AFF2_SET(reg, val) BSP_FLD64SET(reg, val, 16, 23)
+#define GIC_DIST_ICDIRR_AFF1(val) BSP_FLD64(val, 8, 15)
+#define GIC_DIST_ICDIRR_AFF1_GET(reg) BSP_FLD64GET(val, 8, 15)
+#define GIC_DIST_ICDIRR_AFF1_SET(reg, val) BSP_FLD64SET(reg, val, 8, 15)
+#define GIC_DIST_ICDIRR_AFF0(val) BSP_FLD64(val, 0, 7)
+#define GIC_DIST_ICDIRR_AFF0_GET(reg) BSP_FLD64GET(val, 0, 7)
+#define GIC_DIST_ICDIRR_AFF0_SET(reg, val) BSP_FLD64SET(reg, val, 0, 7)
 } gic_dist;
 
 /* GICv3 only */
