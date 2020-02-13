@@ -30,6 +30,7 @@
 #include <rtems/ioimpl.h>
 #include <rtems/sysinit.h>
 #include <rtems/score/apimutex.h>
+#include <rtems/score/context.h>
 #include <rtems/score/percpu.h>
 #include <rtems/score/userextimpl.h>
 #include <rtems/score/wkspace.h>
@@ -1202,34 +1203,6 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
 #endif
 
 /**
- * Configure the very much optional task stack allocator initialization
- */
-#ifndef CONFIGURE_TASK_STACK_ALLOCATOR_INIT
-  #define CONFIGURE_TASK_STACK_ALLOCATOR_INIT NULL
-#endif
-
-/*
- *  Configure the very much optional task stack allocator and deallocator.
- */
-#if !defined(CONFIGURE_TASK_STACK_ALLOCATOR) \
-  && !defined(CONFIGURE_TASK_STACK_DEALLOCATOR)
-  /**
-   * This specifies the task stack allocator method.
-   */
-  #define CONFIGURE_TASK_STACK_ALLOCATOR _Workspace_Allocate
-  /**
-   * This specifies the task stack deallocator method.
-   */
-  #define CONFIGURE_TASK_STACK_DEALLOCATOR _Workspace_Free
-#elif (defined(CONFIGURE_TASK_STACK_ALLOCATOR) \
-  && !defined(CONFIGURE_TASK_STACK_DEALLOCATOR)) \
-    || (!defined(CONFIGURE_TASK_STACK_ALLOCATOR) \
-      && defined(CONFIGURE_TASK_STACK_DEALLOCATOR))
-  #error "CONFIGURE_TASK_STACK_ALLOCATOR and CONFIGURE_TASK_STACK_DEALLOCATOR must be both defined or both undefined"
-#endif
-/**@}*/ /* end of thread/interrupt stack configuration */
-
-/**
  * @addtogroup Configuration
  */
 /**@{*/
@@ -1315,10 +1288,10 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
  */
 #ifdef CONFIGURE_TASK_STACK_FROM_ALLOCATOR
   #define _Configure_From_stackspace(_stack_size) \
-    CONFIGURE_TASK_STACK_FROM_ALLOCATOR(_stack_size)
+    CONFIGURE_TASK_STACK_FROM_ALLOCATOR(_stack_size + CONTEXT_FP_SIZE)
 #else
   #define _Configure_From_stackspace(_stack_size) \
-    _Configure_From_workspace(_stack_size)
+    _Configure_From_workspace(_stack_size + CONTEXT_FP_SIZE)
 #endif
 
 /**
@@ -1836,6 +1809,14 @@ extern rtems_initialization_tasks_table Initialization_tasks[];
         CONFIGURE_EXTRA_MPCI_RECEIVE_SERVER_STACK, /* MPCI stack > minimum */
         CONFIGURE_MP_MPCI_TABLE_POINTER         /* ptr to MPCI config table */
       };
+
+      char _MPCI_Receive_server_stack[
+        CONFIGURE_MINIMUM_TASK_STACK_SIZE
+          + CONFIGURE_EXTRA_MPCI_RECEIVE_SERVER_STACK
+          + CPU_MPCI_RECEIVE_SERVER_EXTRA_STACK
+          + CPU_ALL_TASKS_ARE_FP * CONTEXT_FP_SIZE
+      ] RTEMS_ALIGNED( CPU_INTERRUPT_STACK_ALIGNMENT )
+      RTEMS_SECTION( ".rtemsstack.mpci" );
     #endif
 
     #define _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT 1
@@ -2313,16 +2294,6 @@ struct _reent *__getreent(void)
  */
 #ifndef CONFIGURE_EXECUTIVE_RAM_SIZE
 
-/*
- * Account for allocating the following per object
- *   + array of object control structures
- *   + local pointer table -- pointer per object plus a zero'th
- *     entry in the local pointer table.
- */
-#define _CONFIGURE_MEMORY_FOR_TASKS(_tasks, _number_FP_tasks) \
-  (_Configure_Max_Objects(_number_FP_tasks) \
-    * _Configure_From_workspace(CONTEXT_FP_SIZE))
-
 /**
  * The following macro is used to calculate the memory allocated by RTEMS
  * for the message buffers associated with a particular message queue.
@@ -2359,41 +2330,12 @@ struct _reent *__getreent(void)
 #endif
 
 /**
- * This defines the formula used to compute the amount of memory
- * reserved for internal task control structures.
- */
-#if CPU_IDLE_TASK_IS_FP == TRUE
-  #define _CONFIGURE_MEMORY_FOR_INTERNAL_TASKS \
-    _CONFIGURE_MEMORY_FOR_TASKS( \
-      _CONFIGURE_IDLE_TASKS_COUNT + _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT, \
-      _CONFIGURE_IDLE_TASKS_COUNT + _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT \
-    )
-#else
-  #define _CONFIGURE_MEMORY_FOR_INTERNAL_TASKS \
-    _CONFIGURE_MEMORY_FOR_TASKS( \
-      _CONFIGURE_IDLE_TASKS_COUNT + _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT, \
-      _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT \
-    )
-#endif
-
-/**
- * This macro accounts for general RTEMS system overhead.
- */
-#define _CONFIGURE_MEMORY_FOR_SYSTEM_OVERHEAD \
-  _CONFIGURE_MEMORY_FOR_INTERNAL_TASKS
-
-/**
  * This calculates the memory required for the executive workspace.
  *
  * This is an internal parameter.
  */
 #define CONFIGURE_EXECUTIVE_RAM_SIZE \
 ( \
-   _CONFIGURE_MEMORY_FOR_SYSTEM_OVERHEAD + \
-   _CONFIGURE_MEMORY_FOR_TASKS( \
-     _CONFIGURE_TASKS, _CONFIGURE_TASKS) + \
-   _CONFIGURE_MEMORY_FOR_TASKS( \
-     CONFIGURE_MAXIMUM_POSIX_THREADS, CONFIGURE_MAXIMUM_POSIX_THREADS) + \
    _CONFIGURE_MEMORY_FOR_POSIX_MESSAGE_QUEUES( \
      CONFIGURE_MAXIMUM_POSIX_MESSAGE_QUEUES) + \
    _CONFIGURE_MEMORY_FOR_POSIX_SEMAPHORES( \
@@ -2445,22 +2387,6 @@ struct _reent *__getreent(void)
 
 /*
  * This macro is calculated to specify the memory required for
- * the Idle tasks(s) stack.
- */
-#define _CONFIGURE_IDLE_TASKS_STACK \
-  (_CONFIGURE_IDLE_TASKS_COUNT * \
-    _Configure_From_stackspace( CONFIGURE_IDLE_TASK_STACK_SIZE ) )
-
-/*
- * This macro is calculated to specify the stack memory required for the MPCI
- * task.
- */
-#define _CONFIGURE_MPCI_RECEIVE_SERVER_STACK \
-  (_CONFIGURE_MPCI_RECEIVE_SERVER_COUNT * \
-    _Configure_From_stackspace(CONFIGURE_MINIMUM_TASK_STACK_SIZE))
-
-/*
- * This macro is calculated to specify the memory required for
  * the stacks of all tasks.
  */
 #define _CONFIGURE_TASKS_STACK \
@@ -2477,8 +2403,6 @@ struct _reent *__getreent(void)
 
 #else /* CONFIGURE_EXECUTIVE_RAM_SIZE */
 
-#define _CONFIGURE_IDLE_TASKS_STACK 0
-#define _CONFIGURE_MPCI_RECEIVE_SERVER_STACK 0
 #define _CONFIGURE_INITIALIZATION_THREADS_EXTRA_STACKS 0
 #define _CONFIGURE_TASKS_STACK 0
 #define _CONFIGURE_POSIX_THREADS_STACK 0
@@ -2499,12 +2423,9 @@ struct _reent *__getreent(void)
  */
 #define _CONFIGURE_STACK_SPACE_SIZE \
   ( \
-    _CONFIGURE_IDLE_TASKS_STACK + \
-    _CONFIGURE_MPCI_RECEIVE_SERVER_STACK + \
     _CONFIGURE_INITIALIZATION_THREADS_EXTRA_STACKS + \
     _CONFIGURE_TASKS_STACK + \
     _CONFIGURE_POSIX_THREADS_STACK + \
-    CONFIGURE_EXTRA_MPCI_RECEIVE_SERVER_STACK + \
     _CONFIGURE_LIBBLOCK_TASK_EXTRA_STACKS + \
     CONFIGURE_EXTRA_TASK_STACKS + \
     _CONFIGURE_HEAP_HANDLER_OVERHEAD \
@@ -2629,8 +2550,7 @@ struct _reent *__getreent(void)
 
   const uint32_t _Watchdog_Ticks_per_second = _CONFIGURE_TICKS_PER_SECOND;
 
-  const size_t _Thread_Initial_thread_count = _CONFIGURE_IDLE_TASKS_COUNT +
-    _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT +
+  const size_t _Thread_Initial_thread_count =
     rtems_resource_maximum_per_allocation( _CONFIGURE_TASKS ) +
     rtems_resource_maximum_per_allocation( CONFIGURE_MAXIMUM_POSIX_THREADS );
 
@@ -2640,6 +2560,13 @@ struct _reent *__getreent(void)
     OBJECTS_INTERNAL_THREADS,
     _CONFIGURE_IDLE_TASKS_COUNT + _CONFIGURE_MPCI_RECEIVE_SERVER_COUNT
   );
+
+  char _Thread_Idle_stacks[
+    _CONFIGURE_IDLE_TASKS_COUNT
+      * ( CONFIGURE_IDLE_TASK_STACK_SIZE
+        + CPU_IDLE_TASK_IS_FP * CONTEXT_FP_SIZE )
+  ] RTEMS_ALIGNED( CPU_INTERRUPT_STACK_ALIGNMENT )
+  RTEMS_SECTION( ".rtemsstack.idle" );
 
   #if CONFIGURE_MAXIMUM_BARRIERS > 0
     BARRIER_INFORMATION_DEFINE( CONFIGURE_MAXIMUM_BARRIERS );
@@ -2764,28 +2691,44 @@ struct _reent *__getreent(void)
   uint32_t rtems_minimum_stack_size =
     CONFIGURE_MINIMUM_TASK_STACK_SIZE;
 
+  const uintptr_t _Stack_Space_size = _CONFIGURE_STACK_SPACE_SIZE;
+
+  #if defined(CONFIGURE_TASK_STACK_ALLOCATOR) \
+    && defined(CONFIGURE_TASK_STACK_DEALLOCATOR)
+    #ifdef CONFIGURE_TASK_STACK_ALLOCATOR_AVOIDS_WORK_SPACE
+      const bool _Stack_Allocator_avoids_workspace = true;
+    #else
+      const bool _Stack_Allocator_avoids_workspace = false;
+    #endif
+
+    #ifdef CONFIGURE_TASK_STACK_ALLOCATOR_INIT
+      const Stack_Allocator_initialize _Stack_Allocator_initialize =
+        CONFIGURE_TASK_STACK_ALLOCATOR_INIT;
+    #else
+      const Stack_Allocator_initialize _Stack_Allocator_initialize = NULL;
+    #endif
+
+    const Stack_Allocator_allocate _Stack_Allocator_allocate =
+      CONFIGURE_TASK_STACK_ALLOCATOR;
+
+    const Stack_Allocator_free _Stack_Allocator_free =
+      CONFIGURE_TASK_STACK_DEALLOCATOR;
+  #elif defined(CONFIGURE_TASK_STACK_ALLOCATOR) \
+    || defined(CONFIGURE_TASK_STACK_DEALLOCATOR)
+    #error "CONFIGURE_TASK_STACK_ALLOCATOR and CONFIGURE_TASK_STACK_DEALLOCATOR must be both defined or both undefined"
+  #endif
+
   /**
    * This is the primary Configuration Table for this application.
    */
   const rtems_configuration_table Configuration = {
     CONFIGURE_EXECUTIVE_RAM_SIZE,             /* required RTEMS workspace */
-    _CONFIGURE_STACK_SPACE_SIZE,               /* required stack space */
     CONFIGURE_MAXIMUM_USER_EXTENSIONS,        /* maximum dynamic extensions */
     CONFIGURE_MICROSECONDS_PER_TICK,          /* microseconds per clock tick */
     CONFIGURE_TICKS_PER_TIMESLICE,            /* ticks per timeslice quantum */
     CONFIGURE_IDLE_TASK_BODY,                 /* user's IDLE task */
     CONFIGURE_IDLE_TASK_STACK_SIZE,           /* IDLE task stack size */
-    CONFIGURE_TASK_STACK_ALLOCATOR_INIT,      /* stack allocator init */
-    CONFIGURE_TASK_STACK_ALLOCATOR,           /* stack allocator */
-    CONFIGURE_TASK_STACK_DEALLOCATOR,         /* stack deallocator */
     #ifdef CONFIGURE_UNIFIED_WORK_AREAS       /* true for unified work areas */
-      true,
-    #else
-      false,
-    #endif
-    #ifdef CONFIGURE_TASK_STACK_ALLOCATOR_AVOIDS_WORK_SPACE /* true to avoid
-                                                 work space for thread stack
-                                                 allocation */
       true,
     #else
       false,

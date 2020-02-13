@@ -1,15 +1,7 @@
-/**
- * @file
- *
- * @ingroup RTEMSScoreObject
- *
- * @brief Allocate Object
- */
-
 /*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (C) 2014 embedded brains GmbH
+ * Copyright (C) 2014, 2019 embedded brains GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,11 +29,26 @@
 #include "config.h"
 #endif
 
-#include <rtems/score/objectimpl.h>
+#include <rtems/config.h>
+#include <rtems/score/stack.h>
+#include <rtems/score/tls.h>
+#include <rtems/score/thread.h>
 
-Objects_Control *_Objects_Allocate( Objects_Information *information )
+uintptr_t rtems_configuration_get_stack_space_size( void )
 {
-  _RTEMS_Lock_allocator();
+  uintptr_t space_size;
 
-  return _Objects_Allocate_unprotected( information );
+  space_size = _Stack_Space_size;
+
+  /*
+   * In case we have a non-zero TLS size, then we need a TLS area for each
+   * thread.  These areas are allocated within the stack area from the stack
+   * space.  Ensure that the stack space is large enough to fulfill all requests
+   * known at configuration time (so excluding the unlimited option).  It is not
+   * possible to estimate the TLS size in the configuration at compile-time.
+   * The TLS size is determined at application link-time.
+   */
+  space_size += _Thread_Initial_thread_count * _TLS_Get_allocation_size();
+
+  return space_size;
 }

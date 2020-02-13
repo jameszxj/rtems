@@ -1,15 +1,7 @@
-/**
- * @file
- *
- * @ingroup RTEMSScoreObject
- *
- * @brief Allocate Object
- */
-
 /*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (C) 2014 embedded brains GmbH
+ * Copyright (C) 2014, 2019 embedded brains GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,11 +29,44 @@
 #include "config.h"
 #endif
 
-#include <rtems/score/objectimpl.h>
+#include <rtems/score/tls.h>
 
-Objects_Control *_Objects_Allocate( Objects_Information *information )
+static uintptr_t _TLS_Allocation_size;
+
+uintptr_t _TLS_Get_allocation_size( void )
 {
-  _RTEMS_Lock_allocator();
+  uintptr_t size;
+  uintptr_t allocation_size;
+  uintptr_t alignment;
 
-  return _Objects_Allocate_unprotected( information );
+  size = _TLS_Get_size();
+
+  if ( size == 0 ) {
+    return 0;
+  }
+
+  allocation_size = _TLS_Allocation_size;
+
+  if ( allocation_size == 0 ) {
+    allocation_size = _TLS_Heap_align_up( size );
+    alignment = _TLS_Heap_align_up( (uintptr_t) _TLS_Alignment );
+
+    /*
+     * The stack allocator does not support aligned allocations.  Allocate
+     * enough to do the alignment manually.
+     */
+    if ( alignment > CPU_HEAP_ALIGNMENT ) {
+      allocation_size += alignment;
+    }
+
+    allocation_size += _TLS_Get_thread_control_block_area_size( alignment );
+
+#ifndef __i386__
+    allocation_size += sizeof(TLS_Dynamic_thread_vector);
+#endif
+
+    _TLS_Allocation_size = allocation_size;
+  }
+
+  return allocation_size;
 }

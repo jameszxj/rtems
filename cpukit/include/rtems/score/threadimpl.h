@@ -125,32 +125,64 @@ void _Thread_Create_idle(void);
 void _Thread_Start_multitasking( void ) RTEMS_NO_RETURN;
 
 /**
- * @brief Allocates the requested stack space for the thread.
- *
- * Allocate the requested stack space for the thread.
- * Set the Start.stack field to the address of the stack.
- *
- * @param[out] the_thread The thread where the stack space is requested.
- * @param stack_size The stack space that is requested.
- *
- * @retval actual Size allocated after any adjustment.
- * @retval zero The allocation failed.
+ * @brief The configuration of a new thread to initialize.
  */
-size_t _Thread_Stack_Allocate(
-  Thread_Control *the_thread,
-  size_t          stack_size
-);
+typedef struct {
+  /**
+   * @brief The scheduler control instance for the thread.
+   */
+  const struct _Scheduler_Control *scheduler;
 
-/**
- * @brief Deallocates thread stack.
- *
- * Deallocate the Thread's stack.
- *
- * @param[out] the_thread The thread to deallocate the stack of.
- */
-void _Thread_Stack_Free(
-  Thread_Control *the_thread
-);
+  /**
+   * @brief The starting address of the stack area.
+   */
+  void *stack_area;
+
+  /**
+   * @brief The size of the stack area in bytes.
+   */
+  size_t stack_size;
+
+  /**
+   * @brief The address of the allocated stack area or NULL.
+   */
+  void *allocated_stack;
+
+  /**
+   * @brief The new thread's priority.
+   */
+  Priority_Control priority;
+
+  /**
+   * @brief The thread's budget algorithm.
+   */
+  Thread_CPU_budget_algorithms budget_algorithm;
+
+  /**
+   * @brief The thread's initial budget callout.
+   */
+  Thread_CPU_budget_algorithm_callout budget_callout;
+
+  /**
+   * @brief Name of the object for the thread.
+   */
+  Objects_Name name;
+
+  /**
+   * @brief The thread's initial ISR level.
+   */
+  uint32_t isr_level;
+
+  /**
+   * @brief Indicates whether the thread needs a floating-point area.
+   */
+  bool is_fp;
+
+  /**
+   * @brief Indicates whether the new thread is preemptible.
+   */
+  bool is_preemptible;
+} Thread_Configuration;
 
 /**
  * @brief Initializes thread.
@@ -166,34 +198,16 @@ void _Thread_Stack_Free(
  *       guaranteed to be of at least minimum size.
  *
  * @param information The thread information.
- * @param[out] the_thread The thread to initialize.
- * @param scheduler The scheduler control instance for the thread.
- * @param stack_area The starting address of the thread area.
- * @param stack_size The size of the thread area in bytes.
- * @param is_fp Indicates whether the thread needs a floating point area.
- * @param priority The new thread's priority.
- * @param is_preemptible Indicates whether the new thread is preemptible.
- * @param budget_algorithm The thread's budget algorithm.
- * @param budget_callout The thread's initial budget callout.
- * @param isr_level The thread's initial isr level.
- * @param name Name of the object for the thread.
+ * @param the_thread The thread to initialize.
+ * @param config The configuration of the thread to initialize.
  *
  * @retval true The thread initialization was successful.
  * @retval false The thread initialization failed.
  */
 bool _Thread_Initialize(
-  Thread_Information                   *information,
-  Thread_Control                       *the_thread,
-  const struct _Scheduler_Control      *scheduler,
-  void                                 *stack_area,
-  size_t                                stack_size,
-  bool                                  is_fp,
-  Priority_Control                      priority,
-  bool                                  is_preemptible,
-  Thread_CPU_budget_algorithms          budget_algorithm,
-  Thread_CPU_budget_algorithm_callout   budget_callout,
-  uint32_t                              isr_level,
-  Objects_Name                          name
+  Thread_Information         *information,
+  Thread_Control             *the_thread,
+  const Thread_Configuration *config
 );
 
 /**

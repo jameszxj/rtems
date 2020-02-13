@@ -26,6 +26,7 @@
 #include <rtems/score/chainimpl.h>
 #include <rtems/score/isrlock.h>
 #include <rtems/score/schedulerimpl.h>
+#include <rtems/score/stackimpl.h>
 #include <rtems/score/sysstate.h>
 #include <rtems/score/threadqimpl.h>
 #include <rtems/score/userextimpl.h>
@@ -171,8 +172,6 @@ static void _Thread_Free( Thread_Control *the_thread )
   if ( _Thread_Is_allocated_fp( the_thread ) )
     _Thread_Deallocate_fp();
 #endif
-
-  _Workspace_Free( the_thread->Start.fp_context );
 #endif
 
   _Freechain_Put(
@@ -184,9 +183,7 @@ static void _Thread_Free( Thread_Control *the_thread )
    *  Free the rest of the memory associated with this task
    *  and set the associated pointers to NULL for safety.
    */
-  _Thread_Stack_Free( the_thread );
-
-  _Workspace_Free( the_thread->Start.tls_area );
+  _Stack_Free( the_thread->Start.allocated_stack );
 
 #if defined(RTEMS_SMP)
   _ISR_lock_Destroy( &the_thread->Scheduler.Lock );

@@ -1,15 +1,13 @@
 /**
  * @file
  *
- * @ingroup RTEMSScoreObject
- *
- * @brief Allocate Object
+ * @ingroup RTEMSScoreThread
  */
 
 /*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (C) 2014 embedded brains GmbH
+ * Copyright (C) 2019, 2020 embedded brains GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,11 +35,38 @@
 #include "config.h"
 #endif
 
+#include <rtems/score/thread.h>
 #include <rtems/score/objectimpl.h>
+#include <rtems/score/wkspace.h>
 
-Objects_Control *_Objects_Allocate( Objects_Information *information )
+static void _Thread_Extend_information( Objects_Information *base )
 {
-  _RTEMS_Lock_allocator();
+  Thread_Information *information;
+  Objects_Maximum     block;
 
-  return _Objects_Allocate_unprotected( information );
+  information = (Thread_Information *) base;
+  block = _Objects_Extend_information( &information->Objects );
+
+  if ( block > 0 ) {
+    void *new_heads;
+
+    new_heads = _Freechain_Extend(
+      &information->Thread_queue_heads.Free,
+      _Workspace_Allocate,
+      _Objects_Extend_size( &information->Objects ),
+      _Thread_queue_Heads_size
+    );
+
+    if ( new_heads == NULL ) {
+      _Objects_Free_objects_block( &information->Objects, block );
+    }
+  }
+}
+
+Objects_Control *_Thread_Allocate_unlimited( Objects_Information *information )
+{
+  return _Objects_Allocate_with_extend(
+    information,
+    _Thread_Extend_information
+  );
 }

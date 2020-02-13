@@ -2,14 +2,12 @@
  * @file
  *
  * @ingroup RTEMSScoreObject
- *
- * @brief Allocate Object
  */
 
 /*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (C) 2014 embedded brains GmbH
+ * Copyright (C) 2020 embedded brains GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,11 +35,18 @@
 #include "config.h"
 #endif
 
+#include <rtems/score/objectdata.h>
 #include <rtems/score/objectimpl.h>
 
-Objects_Control *_Objects_Allocate( Objects_Information *information )
+static void _Objects_Do_extend_information( Objects_Information *information )
 {
-  _RTEMS_Lock_allocator();
+  _Objects_Extend_information( information );
+}
 
-  return _Objects_Allocate_unprotected( information );
+Objects_Control *_Objects_Allocate_unlimited( Objects_Information *information )
+{
+  return _Objects_Allocate_with_extend(
+    information,
+    _Objects_Do_extend_information
+  );
 }

@@ -25,13 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <rtems/console.h>
-#include <rtems/bspIo.h>
-
 #include <bsp/irq.h>
 #include <bsp/zynq-uart.h>
-
-#include <bspopts.h>
 
 zynq_uart_context zynq_uart_instances[2] = {
   {
@@ -44,32 +39,3 @@ zynq_uart_context zynq_uart_instances[2] = {
     .irq = ZYNQ_IRQ_UART_1
   }
 };
-
-rtems_status_code console_initialize(
-  rtems_device_major_number major,
-  rtems_device_minor_number minor,
-  void *arg
-)
-{
-  size_t i;
-
-  rtems_termios_initialize();
-
-  for (i = 0; i < RTEMS_ARRAY_SIZE(zynq_uart_instances); ++i) {
-    char uart[] = "/dev/ttySX";
-
-    uart[sizeof(uart) - 2] = (char) ('0' + i);
-    rtems_termios_device_install(
-      &uart[0],
-      &zynq_uart_handler,
-      NULL,
-      &zynq_uart_instances[i].base
-    );
-
-    if (i == BSP_CONSOLE_MINOR) {
-      link(&uart[0], CONSOLE_DEVICE_NAME);
-    }
-  }
-
-  return RTEMS_SUCCESSFUL;
-}

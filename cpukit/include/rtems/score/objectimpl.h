@@ -23,7 +23,9 @@
 
 #include <rtems/score/objectdata.h>
 #include <rtems/score/apimutex.h>
+#include <rtems/score/assert.h>
 #include <rtems/score/isrlock.h>
+#include <rtems/score/sysstate.h>
 #include <rtems/score/threaddispatch.h>
 
 #ifdef __cplusplus
@@ -89,9 +91,23 @@ _Objects_Information_table[ OBJECTS_APIS_LAST + 1 ];
  * @brief Extends an object class information record.
  *
  * @param information Points to an object class information block.
+ *
+ * @retval 0 The extend operation failed.
+ * @retval block The block index of the new objects block.
  */
-void _Objects_Extend_information(
+Objects_Maximum _Objects_Extend_information(
   Objects_Information *information
+);
+
+/**
+ * @brief Free the objects block with the specified index.
+ *
+ * @param information The objects information.
+ * @param block The block index.
+ */
+void _Objects_Free_objects_block(
+  Objects_Information *information,
+  Objects_Maximum      block
 );
 
 /**
@@ -134,25 +150,6 @@ unsigned int _Objects_API_maximum_class(
 );
 
 /**
- * @brief Allocates an object without locking the allocator mutex.
- *
- * This function can be called in two contexts
- * - the executing thread is the owner of the object allocator mutex, or
- * - in case the system state is not up, e.g. during sequential system
- *   initialization.
- *
- * @param[in, out] information The object information block.
- *
- * @retval object The allocated object.
- * @retval NULL No object available.
- *
- * @see _Objects_Allocate() and _Objects_Free().
- */
-Objects_Control *_Objects_Allocate_unprotected(
-  Objects_Information *information
-);
-
-/**
  * @brief Allocates an object.
  *
  * This function locks the object allocator mutex via
@@ -192,55 +189,6 @@ Objects_Control *_Objects_Allocate_unprotected(
  * @see _Objects_Free().
  */
 Objects_Control *_Objects_Allocate( Objects_Information *information );
-
-/**
- * @brief Frees an object.
- *
- * Appends the object to the chain of inactive objects.
- *
- * @param information The object information block.
- * @param[out] the_object The object to free.
- *
- * @see _Objects_Allocate().
- *
- * A typical object deletion code looks like this:
- * @code
- * rtems_status_code some_delete( rtems_id id )
- * {
- *   Some_Control      *some;
- *
- *   // The object allocator mutex protects the executing thread from
- *   // asynchronous thread restart and deletion.
- *   _Objects_Allocator_lock();
- *
- *   // Get the object under protection of the object allocator mutex.
- *   some = (Semaphore_Control *)
- *     _Objects_Get_no_protection( id, &_Some_Information );
- *
- *   if ( some == NULL ) {
- *     _Objects_Allocator_unlock();
- *     return RTEMS_INVALID_ID;
- *   }
- *
- *   // After the object close an object get with this identifier will
- *   // fail.
- *   _Objects_Close( &_Some_Information, &some->Object );
- *
- *   _Some_Delete( some );
- *
- *   // Thread dispatching is enabled.  The object free is only protected
- *   // by the object allocator mutex.
- *   _Objects_Free( &_Some_Information, &some->Object );
- *
- *   _Objects_Allocator_unlock();
- *   return RTEMS_SUCCESSFUL;
- * }
- * @endcode
- */
-void _Objects_Free(
-  Objects_Information *information,
-  Objects_Control     *the_object
-);
 
 /**
  *  This function implements the common portion of the object
@@ -450,6 +398,21 @@ Objects_Information *_Objects_Get_information_id(
 );
 
 /**
+ * @brief Returns if the object has a string name.
+ *
+ * @param information The object information table.
+ *
+ * @retval true The object has a string name.
+ * @retval false The object does not have a string name.
+ */
+RTEMS_INLINE_ROUTINE bool _Objects_Has_string_name(
+  const Objects_Information *information
+)
+{
+  return information->name_length > 0;
+}
+
+/**
  * @brief Gets object name in the form of a C string.
  *
  * This method gets the name of an object and returns its name
@@ -516,10 +479,14 @@ bool _Objects_Set_name(
  * @param information The corresponding object information table.
  * @param[out] the_object The object to operate upon.
  */
-void _Objects_Namespace_remove_u32(
+RTEMS_INLINE_ROUTINE void _Objects_Namespace_remove_u32(
   const Objects_Information *information,
   Objects_Control           *the_object
-);
+)
+{
+  _Assert( !_Objects_Has_string_name( information ) );
+  the_object->name.name_u32 = 0;
+}
 
 /**
  * @brief Removes object with a string name from its namespace.
@@ -556,21 +523,6 @@ void _Objects_Close(
 Objects_Maximum _Objects_Active_count(
   const Objects_Information *information
 );
-
-/**
- * @brief Returns if the object has a string name.
- *
- * @param information The object information table.
- *
- * @retval true The object has a string name.
- * @retval false The object does not have a string name.
- */
-RTEMS_INLINE_ROUTINE bool _Objects_Has_string_name(
-  const Objects_Information *information
-)
-{
-  return information->name_length > 0;
-}
 
 /**
  * @brief Returns the object's objects per block.
@@ -689,6 +641,19 @@ RTEMS_INLINE_ROUTINE Objects_Maximum _Objects_Get_maximum_index(
 )
 {
   return _Objects_Get_index( information->maximum_id );
+}
+
+/**
+ * @brief Get an inactive object or NULL.
+ *
+ * @retval NULL No inactive object is available.
+ * @retval object An inactive object.
+ */
+RTEMS_INLINE_ROUTINE Objects_Control *_Objects_Get_inactive(
+  Objects_Information *information
+)
+{
+  return (Objects_Control *) _Chain_Get_unprotected( &information->Inactive );
 }
 
 /**
@@ -889,6 +854,149 @@ RTEMS_INLINE_ROUTINE void _Objects_Allocator_unlock( void )
 RTEMS_INLINE_ROUTINE bool _Objects_Allocator_is_owner( void )
 {
   return _RTEMS_Allocator_is_owner();
+}
+
+/**
+ * @brief Allocates an object without locking the allocator mutex.
+ *
+ * This function can be called in two contexts
+ * - the executing thread is the owner of the object allocator mutex, or
+ * - in case the system state is not up, e.g. during sequential system
+ *   initialization.
+ *
+ * @param[in, out] information The object information block.
+ *
+ * @retval object The allocated object.
+ * @retval NULL No object available.
+ *
+ * @see _Objects_Allocate() and _Objects_Free().
+ */
+RTEMS_INLINE_ROUTINE Objects_Control *_Objects_Allocate_unprotected(
+  Objects_Information *information
+)
+{
+  _Assert(
+    _Objects_Allocator_is_owner()
+      || !_System_state_Is_up( _System_state_Get() )
+  );
+
+  return ( *information->allocate )( information );
+}
+
+/**
+ * @brief Frees an object.
+ *
+ * Appends the object to the chain of inactive objects.
+ *
+ * @param information The object information block.
+ * @param[out] the_object The object to free.
+ *
+ * @see _Objects_Allocate().
+ *
+ * A typical object deletion code looks like this:
+ * @code
+ * rtems_status_code some_delete( rtems_id id )
+ * {
+ *   Some_Control      *some;
+ *
+ *   // The object allocator mutex protects the executing thread from
+ *   // asynchronous thread restart and deletion.
+ *   _Objects_Allocator_lock();
+ *
+ *   // Get the object under protection of the object allocator mutex.
+ *   some = (Semaphore_Control *)
+ *     _Objects_Get_no_protection( id, &_Some_Information );
+ *
+ *   if ( some == NULL ) {
+ *     _Objects_Allocator_unlock();
+ *     return RTEMS_INVALID_ID;
+ *   }
+ *
+ *   // After the object close an object get with this identifier will
+ *   // fail.
+ *   _Objects_Close( &_Some_Information, &some->Object );
+ *
+ *   _Some_Delete( some );
+ *
+ *   // Thread dispatching is enabled.  The object free is only protected
+ *   // by the object allocator mutex.
+ *   _Objects_Free( &_Some_Information, &some->Object );
+ *
+ *   _Objects_Allocator_unlock();
+ *   return RTEMS_SUCCESSFUL;
+ * }
+ * @endcode
+ */
+RTEMS_INLINE_ROUTINE void _Objects_Free(
+  Objects_Information *information,
+  Objects_Control     *the_object
+)
+{
+  _Assert( _Objects_Allocator_is_owner() );
+  _Assert( information->free != NULL );
+  ( *information->free )( information, the_object );
+}
+
+/**
+ * @brief Activate the object.
+ *
+ * This function must be only used in case this objects information supports
+ * unlimited objects.
+ *
+ * @param information The object information block.
+ * @param the_object The object to activate.
+ */
+RTEMS_INLINE_ROUTINE void _Objects_Activate_unlimited(
+  Objects_Information *information,
+  Objects_Control     *the_object
+)
+{
+  Objects_Maximum objects_per_block;
+  Objects_Maximum block;
+
+  _Assert( _Objects_Is_auto_extend( information ) );
+
+  objects_per_block = information->objects_per_block;
+  block = _Objects_Get_index( the_object->id ) - OBJECTS_INDEX_MINIMUM;
+
+  if ( block > objects_per_block ) {
+    block /= objects_per_block;
+
+    information->inactive_per_block[ block ]--;
+    information->inactive--;
+  }
+}
+
+/**
+ * @brief Allocate an object and extend the objects information on demand.
+ *
+ * This function must be only used in case this objects information supports
+ * unlimited objects.
+ *
+ * @param information The object information block.
+ * @param extend The object information extend handler.
+ */
+RTEMS_INLINE_ROUTINE Objects_Control *_Objects_Allocate_with_extend(
+  Objects_Information   *information,
+  void                ( *extend )( Objects_Information * )
+)
+{
+  Objects_Control *the_object;
+
+  _Assert( _Objects_Is_auto_extend( information ) );
+
+  the_object = _Objects_Get_inactive( information );
+
+  if ( the_object == NULL ) {
+    ( *extend )( information );
+    the_object = _Objects_Get_inactive( information );
+  }
+
+  if ( the_object != NULL ) {
+    _Objects_Activate_unlimited( information, the_object );
+  }
+
+  return the_object;
 }
 
 /** @} */

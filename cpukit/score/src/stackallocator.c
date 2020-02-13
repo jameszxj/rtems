@@ -1,15 +1,7 @@
-/**
- * @file
- *
- * @ingroup RTEMSScoreObject
- *
- * @brief Allocate Object
- */
-
 /*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (C) 2014 embedded brains GmbH
+ * Copyright (C) 2019 embedded brains GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,11 +29,13 @@
 #include "config.h"
 #endif
 
-#include <rtems/score/objectimpl.h>
+#include <rtems/score/stack.h>
+#include <rtems/score/wkspace.h>
 
-Objects_Control *_Objects_Allocate( Objects_Information *information )
-{
-  _RTEMS_Lock_allocator();
+const bool _Stack_Allocator_avoids_workspace = false;
 
-  return _Objects_Allocate_unprotected( information );
-}
+const Stack_Allocator_initialize _Stack_Allocator_initialize = NULL;
+
+const Stack_Allocator_allocate _Stack_Allocator_allocate = _Workspace_Allocate;
+
+const Stack_Allocator_free _Stack_Allocator_free = _Workspace_Free;

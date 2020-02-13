@@ -22,6 +22,8 @@
 #define _RTEMS_SCORE_STACKIMPL_H
 
 #include <rtems/score/stack.h>
+#include <rtems/score/context.h>
+#include <rtems/score/tls.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,15 +76,28 @@ RTEMS_INLINE_ROUTINE uint32_t _Stack_Minimum (void)
  * a valid stack area on this processor, and false otherwise.
  *
  * @param size The stack size to check.
+ * @param is_fp Indicates if the stack is for a floating-point thread.
  *
  * @retval true @a size is large enough.
  * @retval false @a size is not large enough.
  */
-RTEMS_INLINE_ROUTINE bool _Stack_Is_enough (
-  size_t size
+RTEMS_INLINE_ROUTINE bool _Stack_Is_enough(
+  size_t size,
+  bool   is_fp
 )
 {
-  return ( size >= _Stack_Minimum() );
+  size_t minimum;
+
+  minimum = _TLS_Get_allocation_size();
+  minimum += _Stack_Minimum();
+
+#if ( CPU_HARDWARE_FP == TRUE ) || ( CPU_SOFTWARE_FP == TRUE )
+  if ( is_fp ) {
+    minimum += CONTEXT_FP_SIZE;
+  }
+#endif
+
+  return ( size >= minimum );
 }
 
 /**
@@ -104,6 +119,52 @@ RTEMS_INLINE_ROUTINE size_t _Stack_Ensure_minimum (
     return size;
   return _Stack_Minimum();
 }
+
+/**
+ * @brief Extend the stack size to account for additional data structures
+ *   allocated in the stack area of a thread.
+ *
+ * @param stack_size The stack size.
+ * @param is_fp Indicates if the stack is for a floating-point thread.
+ *
+ * @return The extended stack size.
+ */
+RTEMS_INLINE_ROUTINE size_t _Stack_Extend_size(
+  size_t stack_size,
+  bool   is_fp
+)
+{
+#if ( CPU_HARDWARE_FP == TRUE ) || ( CPU_SOFTWARE_FP == TRUE )
+  if ( is_fp ) {
+    stack_size += CONTEXT_FP_SIZE;
+  }
+#else
+  (void) is_fp;
+#endif
+
+  stack_size += _TLS_Get_allocation_size();
+
+  return stack_size;
+}
+
+/**
+ * @brief Allocate the requested stack space.
+ *
+ * @param stack_size The stack space that is requested.
+ *
+ * @retval stack_area The allocated stack area.
+ * @retval NULL The allocation failed.
+ */
+void *_Stack_Allocate( size_t stack_size );
+
+/**
+ * @brief Free the stack area allocated by _Stack_Allocate().
+ *
+ * Do nothing if the stack area is NULL.
+ *
+ * @param stack_area The stack area to free, or NULL.
+ */
+void _Stack_Free( void *stack_area );
 
 /** @} */
 

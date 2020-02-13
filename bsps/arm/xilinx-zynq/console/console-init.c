@@ -1,15 +1,7 @@
-/**
- * @file
- *
- * @ingroup RTEMSScoreObject
- *
- * @brief Allocate Object
- */
-
 /*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (C) 2014 embedded brains GmbH
+ * Copyright (C) 2013, 2017 embedded brains GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,15 +25,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if HAVE_CONFIG_H
-#include "config.h"
-#endif
+#include <rtems/console.h>
 
-#include <rtems/score/objectimpl.h>
+#include <bsp.h>
+#include <bsp/zynq-uart.h>
 
-Objects_Control *_Objects_Allocate( Objects_Information *information )
+rtems_status_code console_initialize(
+  rtems_device_major_number major,
+  rtems_device_minor_number minor,
+  void *arg
+)
 {
-  _RTEMS_Lock_allocator();
+  size_t i;
 
-  return _Objects_Allocate_unprotected( information );
+  rtems_termios_initialize();
+
+  for (i = 0; i < RTEMS_ARRAY_SIZE(zynq_uart_instances); ++i) {
+    char uart[] = "/dev/ttySX";
+
+    uart[sizeof(uart) - 2] = (char) ('0' + i);
+    rtems_termios_device_install(
+      &uart[0],
+      &zynq_uart_handler,
+      NULL,
+      &zynq_uart_instances[i].base
+    );
+
+    if (i == BSP_CONSOLE_MINOR) {
+      link(&uart[0], CONSOLE_DEVICE_NAME);
+    }
+  }
+
+  return RTEMS_SUCCESSFUL;
 }
